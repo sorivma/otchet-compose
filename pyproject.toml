@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "otchet-compose"
+version = "0.1.0"
+description = "CLI-генератор отчётов по лабораторным работам в формате DOCX"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "python-docx>=1.1.0",
+    "PyYAML>=6.0.1",
+]
+
+[project.scripts]
+otchet-compose = "otchet_compose.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
