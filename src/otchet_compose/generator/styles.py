@@ -1,152 +1,49 @@
+import json
+from pathlib import Path
+
 from docx.enum.style import WD_STYLE_TYPE
 from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_LINE_SPACING
 from docx.shared import Cm, Pt
 
 from .fields import set_font, set_paragraph_outline_level
 
-_S = WD_LINE_SPACING.SINGLE
-_15 = WD_LINE_SPACING.ONE_POINT_FIVE
-_J = WD_ALIGN_PARAGRAPH.JUSTIFY
-_C = WD_ALIGN_PARAGRAPH.CENTER
-_L = WD_ALIGN_PARAGRAPH.LEFT
+_STYLES_JSON = Path(__file__).parent / "styles.json"
 
-# Each entry drives one paragraph style. Keys:
-#   name, base, priority  – style identity / Word UI visibility
-#   font                  – passed to set_font()
-#   para                  – paragraph format fields
-#   outline_level         – optional, for TOC heading levels
-_STYLE_SPECS = [
-    {
-        "name": "Normal",
-        "font": {"size": 14, "bold": False, "italic": False, "underline": False},
-        "para": {
-            "alignment": _J,
-            "first_line_indent": Cm(1.25),
-            "space_before": Pt(0),
-            "space_after": Pt(0),
-            "line_spacing": 1.5,
-            "line_spacing_rule": _15,
-        },
-    },
-    {
-        "name": "GOST Body Text",
-        "base": "Normal",
-        "priority": 1,
-        "font": {"size": 14, "bold": False, "italic": False, "underline": False},
-        "para": {
-            "alignment": _J,
-            "first_line_indent": Cm(1.25),
-            "space_before": Pt(0),
-            "space_after": Pt(0),
-            "line_spacing": 1.5,
-            "line_spacing_rule": _15,
-        },
-    },
-    {
-        "name": "GOST Service",
-        "base": "Normal",
-        "priority": 90,
-        "font": {"size": 14, "bold": False, "italic": False, "underline": False},
-        "para": {
-            "alignment": _L,
-            "first_line_indent": Cm(0),
-            "space_before": Pt(0),
-            "space_after": Pt(0),
-            "line_spacing": 1.5,
-            "line_spacing_rule": _15,
-        },
-    },
-    {
-        "name": "GOST Heading 1",
-        "base": "Normal",
-        "priority": 2,
-        "font": {"size": 14, "bold": True, "italic": False, "underline": False},
-        "para": {
-            "alignment": _C,
-            "first_line_indent": Cm(0),
-            "space_before": Pt(0),
-            "space_after": Pt(18),
-            "line_spacing": 1.5,
-            "line_spacing_rule": _15,
-            "keep_with_next": True,
-        },
-        "outline_level": 0,
-    },
-    {
-        "name": "GOST Heading 2",
-        "base": "Normal",
-        "priority": 3,
-        "font": {"size": 14, "bold": True, "italic": False, "underline": False},
-        "para": {
-            "alignment": _J,
-            "first_line_indent": Cm(1.25),
-            "space_before": Pt(18),
-            "space_after": Pt(6),
-            "line_spacing": 1.5,
-            "line_spacing_rule": _15,
-            "keep_with_next": True,
-        },
-        "outline_level": 1,
-    },
-    {
-        "name": "GOST Heading 3",
-        "base": "Normal",
-        "priority": 4,
-        "font": {"size": 14, "bold": True, "italic": False, "underline": False},
-        "para": {
-            "alignment": _J,
-            "first_line_indent": Cm(1.25),
-            "space_before": Pt(12),
-            "space_after": Pt(6),
-            "line_spacing": 1.5,
-            "line_spacing_rule": _15,
-            "keep_with_next": True,
-        },
-        "outline_level": 2,
-    },
-    {
-        "name": "GOST TOC Title",
-        "base": "Normal",
-        "priority": 5,
-        "font": {"size": 14, "bold": True, "italic": False, "underline": False},
-        "para": {
-            "alignment": _C,
-            "first_line_indent": Cm(0),
-            "space_before": Pt(0),
-            "space_after": Pt(12),
-            "line_spacing": 1.5,
-            "line_spacing_rule": _15,
-        },
-    },
-    {
-        "name": "GOST Caption",
-        "base": "Normal",
-        "priority": 6,
-        "font": {"size": 14, "bold": False, "italic": False, "underline": False},
-        "para": {
-            "alignment": _C,
-            "first_line_indent": Cm(0),
-            "space_before": Pt(6),
-            "space_after": Pt(6),
-            "line_spacing": 1.0,
-            "line_spacing_rule": _S,
-        },
-    },
-    {
-        "name": "GOST Figure Placeholder",
-        "base": "Normal",
-        "priority": 7,
-        "font": {"size": 12, "bold": False, "italic": True, "underline": False},
-        "para": {
-            "alignment": _C,
-            "first_line_indent": Cm(0),
-            "space_before": Pt(0),
-            "space_after": Pt(0),
-            "line_spacing": 1.0,
-            "line_spacing_rule": _S,
-        },
-    },
-]
+_ALIGNMENT = {
+    "justify": WD_ALIGN_PARAGRAPH.JUSTIFY,
+    "center": WD_ALIGN_PARAGRAPH.CENTER,
+    "left": WD_ALIGN_PARAGRAPH.LEFT,
+}
+
+_LINE_SPACING_RULE = {
+    "single": WD_LINE_SPACING.SINGLE,
+    "one_point_five": WD_LINE_SPACING.ONE_POINT_FIVE,
+}
+
+
+def _parse_measurement(value: str):
+    if value.endswith("cm"):
+        return Cm(float(value[:-2]))
+    if value.endswith("pt"):
+        return Pt(float(value[:-2]))
+    raise ValueError(f"Unrecognised measurement: {value!r} (expected e.g. '1.25cm' or '18pt')")
+
+
+def _resolve_spec(raw: dict) -> dict:
+    spec = {k: v for k, v in raw.items() if k != "para"}
+    para = dict(raw["para"])
+    para["alignment"] = _ALIGNMENT[para["alignment"]]
+    para["line_spacing_rule"] = _LINE_SPACING_RULE[para["line_spacing_rule"]]
+    para["first_line_indent"] = _parse_measurement(para["first_line_indent"])
+    para["space_before"] = _parse_measurement(para["space_before"])
+    para["space_after"] = _parse_measurement(para["space_after"])
+    spec["para"] = para
+    return spec
+
+
+def _load_style_specs() -> list[dict]:
+    with _STYLES_JSON.open("r", encoding="utf-8") as f:
+        return [_resolve_spec(s) for s in json.load(f)]
 
 
 def _get_or_create_style(doc, name: str, base: str):
@@ -206,5 +103,5 @@ def _apply_spec(doc, spec: dict) -> None:
 
 
 def setup_styles(doc) -> None:
-    for spec in _STYLE_SPECS:
+    for spec in _load_style_specs():
         _apply_spec(doc, spec)

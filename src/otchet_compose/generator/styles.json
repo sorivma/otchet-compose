@@ -1,0 +1,132 @@
+[
+  {
+    "name": "Normal",
+    "font": { "size": 14, "bold": false, "italic": false, "underline": false },
+    "para": {
+      "alignment": "justify",
+      "first_line_indent": "1.25cm",
+      "space_before": "0pt",
+      "space_after": "0pt",
+      "line_spacing": 1.5,
+      "line_spacing_rule": "one_point_five"
+    }
+  },
+  {
+    "name": "GOST Body Text",
+    "base": "Normal",
+    "priority": 1,
+    "font": { "size": 14, "bold": false, "italic": false, "underline": false },
+    "para": {
+      "alignment": "justify",
+      "first_line_indent": "1.25cm",
+      "space_before": "0pt",
+      "space_after": "0pt",
+      "line_spacing": 1.5,
+      "line_spacing_rule": "one_point_five"
+    }
+  },
+  {
+    "name": "GOST Service",
+    "base": "Normal",
+    "priority": 90,
+    "font": { "size": 14, "bold": false, "italic": false, "underline": false },
+    "para": {
+      "alignment": "left",
+      "first_line_indent": "0cm",
+      "space_before": "0pt",
+      "space_after": "0pt",
+      "line_spacing": 1.5,
+      "line_spacing_rule": "one_point_five"
+    }
+  },
+  {
+    "name": "GOST Heading 1",
+    "base": "Normal",
+    "priority": 2,
+    "font": { "size": 14, "bold": true, "italic": false, "underline": false },
+    "para": {
+      "alignment": "center",
+      "first_line_indent": "0cm",
+      "space_before": "0pt",
+      "space_after": "18pt",
+      "line_spacing": 1.5,
+      "line_spacing_rule": "one_point_five",
+      "keep_with_next": true
+    },
+    "outline_level": 0
+  },
+  {
+    "name": "GOST Heading 2",
+    "base": "Normal",
+    "priority": 3,
+    "font": { "size": 14, "bold": true, "italic": false, "underline": false },
+    "para": {
+      "alignment": "justify",
+      "first_line_indent": "1.25cm",
+      "space_before": "18pt",
+      "space_after": "6pt",
+      "line_spacing": 1.5,
+      "line_spacing_rule": "one_point_five",
+      "keep_with_next": true
+    },
+    "outline_level": 1
+  },
+  {
+    "name": "GOST Heading 3",
+    "base": "Normal",
+    "priority": 4,
+    "font": { "size": 14, "bold": true, "italic": false, "underline": false },
+    "para": {
+      "alignment": "justify",
+      "first_line_indent": "1.25cm",
+      "space_before": "12pt",
+      "space_after": "6pt",
+      "line_spacing": 1.5,
+      "line_spacing_rule": "one_point_five",
+      "keep_with_next": true
+    },
+    "outline_level": 2
+  },
+  {
+    "name": "GOST TOC Title",
+    "base": "Normal",
+    "priority": 5,
+    "font": { "size": 14, "bold": true, "italic": false, "underline": false },
+    "para": {
+      "alignment": "center",
+      "first_line_indent": "0cm",
+      "space_before": "0pt",
+      "space_after": "12pt",
+      "line_spacing": 1.5,
+      "line_spacing_rule": "one_point_five"
+    }
+  },
+  {
+    "name": "GOST Caption",
+    "base": "Normal",
+    "priority": 6,
+    "font": { "size": 14, "bold": false, "italic": false, "underline": false },
+    "para": {
+      "alignment": "center",
+      "first_line_indent": "0cm",
+      "space_before": "6pt",
+      "space_after": "6pt",
+      "line_spacing": 1.0,
+      "line_spacing_rule": "single"
+    }
+  },
+  {
+    "name": "GOST Figure Placeholder",
+    "base": "Normal",
+    "priority": 7,
+    "font": { "size": 12, "bold": false, "italic": true, "underline": false },
+    "para": {
+      "alignment": "center",
+      "first_line_indent": "0cm",
+      "space_before": "0pt",
+      "space_after": "0pt",
+      "line_spacing": 1.0,
+      "line_spacing_rule": "single"
+    }
+  }
+]
