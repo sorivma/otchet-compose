@@ -12,8 +12,8 @@ from docx import Document
 from docx.shared import Cm
 
 from .blocks import REGISTRY, RenderContext
-from .fields import add_field_run
-from .page import add_page_number, setup_page
+from .fields import OxmlHelper
+from .page import PageSetup
 from .styles import setup_styles
 
 
@@ -36,7 +36,7 @@ def _add_toc(doc) -> None:
     paragraph = doc.add_paragraph(style="GOST Service")
     paragraph.paragraph_format.first_line_indent = Cm(0)
 
-    add_field_run(
+    OxmlHelper.add_field_run(
         paragraph,
         r' TOC \o "1-3" \h \z \u ',
         "Оглавление будет сформировано после ручного обновления полей в Microsoft Word.",
@@ -57,7 +57,7 @@ def generate_document(config: dict) -> None:
 
     doc = Document()
 
-    setup_page(doc, hide_first_page_number=document_cfg.get("reserve_title_page", False))
+    PageSetup.apply(doc, hide_first_page_number=document_cfg.get("reserve_title_page", False))
     setup_styles(doc)
     _remove_initial_empty_paragraph(doc)
 
@@ -74,7 +74,7 @@ def generate_document(config: dict) -> None:
     for block in content:
         REGISTRY[block["type"]].render(doc, block, ctx)
 
-    add_page_number(doc.sections[0])
+    PageSetup.add_page_number(doc.sections[0])
 
     output_path = Path(document_cfg["output"])
     output_path.parent.mkdir(parents=True, exist_ok=True)

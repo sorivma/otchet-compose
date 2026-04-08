@@ -23,7 +23,10 @@ from docx.enum.style import WD_STYLE_TYPE
 from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_LINE_SPACING
 from docx.shared import Cm, Pt
 
-from .fields import set_font, set_paragraph_outline_level
+from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
+
+from .fields import OxmlHelper
 
 _BUNDLED_STYLES_JSON = Path(__file__).parent / "styles.json"
 _USER_STYLES_JSON = Path.home() / ".otchet-compose" / "styles.json"
@@ -79,6 +82,20 @@ def _load_style_specs() -> list[dict]:
         return [_resolve_spec(s) for s in json.load(f)]
 
 
+def _set_outline_level(style, level: int) -> None:
+    """Set the ``w:outlineLvl`` XML attribute on *style*'s paragraph properties.
+
+    Required for Word's built-in TOC to recognise custom styles as headings.
+    *level* follows the OOXML convention: 0 = Heading 1, 1 = Heading 2, etc.
+    """
+    p_pr = style.element.get_or_add_pPr()
+    outline = p_pr.find(qn("w:outlineLvl"))
+    if outline is None:
+        outline = OxmlElement("w:outlineLvl")
+        p_pr.append(outline)
+    outline.set(qn("w:val"), str(level))
+
+
 def _get_or_create_style(doc, name: str, base: str):
     """Return the named style, creating it if it doesn't exist, and set its base style."""
     styles = doc.styles
@@ -112,7 +129,7 @@ def _apply_spec(doc, spec: dict) -> None:
         _expose_in_word_ui(style, spec["priority"])
 
     font_spec = spec["font"]
-    set_font(
+    OxmlHelper.set_font(
         style,
         name="Times New Roman",
         size=font_spec["size"],
@@ -135,7 +152,7 @@ def _apply_spec(doc, spec: dict) -> None:
         pf.keep_with_next = para["keep_with_next"]
 
     if "outline_level" in spec:
-        set_paragraph_outline_level(style, spec["outline_level"])
+        _set_outline_level(style, spec["outline_level"])
 
 
 def setup_styles(doc) -> None:

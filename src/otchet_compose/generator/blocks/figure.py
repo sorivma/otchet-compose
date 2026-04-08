@@ -13,7 +13,9 @@ from docx.enum.table import WD_ALIGN_VERTICAL, WD_ROW_HEIGHT_RULE
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.shared import Cm
 
-from ..fields import set_table_borders
+from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
+
 from ._base import RenderContext
 
 
@@ -63,7 +65,7 @@ def _add_placeholder(doc) -> None:
     """Insert a 12 × 7 cm bordered table as a figure placeholder."""
     table = doc.add_table(rows=1, cols=1)
     table.autofit = False
-    set_table_borders(table)
+    _set_table_borders(table)
 
     cell = table.cell(0, 0)
     cell.width = Cm(12)
@@ -77,6 +79,25 @@ def _add_placeholder(doc) -> None:
     paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
     paragraph.style = "GOST Figure Placeholder"
     paragraph.add_run("Изображение отсутствует")
+
+
+def _set_table_borders(table) -> None:
+    """Apply a thin black single-line border to all six sides of *table*."""
+    tbl = table._tbl
+    tbl_pr = tbl.tblPr
+    borders = tbl_pr.find(qn("w:tblBorders"))
+    if borders is None:
+        borders = OxmlElement("w:tblBorders")
+        tbl_pr.append(borders)
+    for border_name in ("top", "left", "bottom", "right", "insideH", "insideV"):
+        border = borders.find(qn(f"w:{border_name}"))
+        if border is None:
+            border = OxmlElement(f"w:{border_name}")
+            borders.append(border)
+        border.set(qn("w:val"), "single")
+        border.set(qn("w:sz"), "8")
+        border.set(qn("w:space"), "0")
+        border.set(qn("w:color"), "000000")
 
 
 def _add_caption(doc, figure_number: int, text: str) -> None:
