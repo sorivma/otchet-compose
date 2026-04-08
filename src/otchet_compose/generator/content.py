@@ -1,3 +1,9 @@
+"""Shared content-rendering helpers.
+
+Used by block handlers in :mod:`otchet_compose.generator.blocks` and by
+:mod:`otchet_compose.generator.build` for document-level elements (TOC).
+"""
+
 from pathlib import Path
 
 from docx.enum.table import WD_ALIGN_VERTICAL, WD_ROW_HEIGHT_RULE
@@ -8,6 +14,12 @@ from .fields import add_field_run, set_table_borders
 
 
 def add_toc(doc) -> None:
+    """Insert a Word TOC field preceded by a "СОДЕРЖАНИЕ" title paragraph.
+
+    The field uses ``\\o "1-3" \\h \\z \\u`` switches (levels 1–3, hyperlinks,
+    hide tab leaders, use applied paragraph outline levels).  The placeholder
+    text reminds users to update fields in Word before printing.
+    """
     doc.add_paragraph("СОДЕРЖАНИЕ", style="GOST TOC Title")
 
     paragraph = doc.add_paragraph(style="GOST Service")
@@ -22,6 +34,19 @@ def add_toc(doc) -> None:
 
 
 def add_heading(doc, text: str, level: int, structural: bool, page_break_before: bool = False) -> None:
+    """Append a heading paragraph to *doc*.
+
+    Structural headings (``structural=True``) are uppercased and always use
+    ``GOST Heading 1`` regardless of *level*.  Non-structural headings use
+    ``GOST Heading 1/2/3`` matching *level*.
+
+    Args:
+        doc: The python-docx ``Document``.
+        text: Heading text (will be uppercased if *structural* is ``True``).
+        level: Numeric heading level (1–3).
+        structural: Whether this is a top-level structural section heading.
+        page_break_before: Insert a page break before the heading when ``True``.
+    """
     text = text.strip()
 
     if structural:
@@ -41,11 +66,23 @@ def add_heading(doc, text: str, level: int, structural: bool, page_break_before:
 
 
 def add_body_paragraph(doc, text: str) -> None:
+    """Append a ``GOST Body Text`` paragraph with a 1.25 cm first-line indent."""
     paragraph = doc.add_paragraph(text.strip(), style="GOST Body Text")
     paragraph.paragraph_format.first_line_indent = Cm(1.25)
 
 
 def add_figure(doc, caption: str, image_path: str | None, figure_number: int) -> None:
+    """Append a figure (image or placeholder) followed by its caption.
+
+    If *image_path* is provided and the file exists, the image is embedded at
+    16 cm width.  Otherwise a bordered placeholder table is inserted instead.
+
+    Args:
+        doc: The python-docx ``Document``.
+        caption: Caption text without the figure number prefix.
+        image_path: Absolute path to the image file, or ``None``.
+        figure_number: Sequential figure number used in the caption label.
+    """
     if image_path and Path(image_path).exists():
         paragraph = doc.add_paragraph()
         paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -59,6 +96,7 @@ def add_figure(doc, caption: str, image_path: str | None, figure_number: int) ->
 
 
 def add_figure_placeholder(doc) -> None:
+    """Insert a 12 × 7 cm bordered table as a figure placeholder."""
     table = doc.add_table(rows=1, cols=1)
     table.autofit = False
     set_table_borders(table)
@@ -78,5 +116,6 @@ def add_figure_placeholder(doc) -> None:
 
 
 def add_figure_caption(doc, figure_number: int, text: str) -> None:
+    """Append a ``GOST Caption`` paragraph formatted as "Рисунок N – text"."""
     caption_text = f"Рисунок {figure_number} – {text.strip().rstrip('.')}"
     doc.add_paragraph(caption_text, style="GOST Caption")

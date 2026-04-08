@@ -1,3 +1,9 @@
+"""Command-line entry point for otchet-compose.
+
+Exposes the ``gen`` subcommand that loads a YAML config and delegates
+document generation to :func:`~otchet_compose.generator.generate_document`.
+"""
+
 import argparse
 from pathlib import Path
 
@@ -6,6 +12,14 @@ from .generator import generate_document
 
 
 def gen_command(args) -> int:
+    """Execute the ``gen`` subcommand.
+
+    Loads the YAML config at *args.config* (defaults to
+    ``otchet-compose.yml`` in the current directory) and calls
+    :func:`~otchet_compose.generator.generate_document`.
+
+    Returns 0 on success, 1 if an exception is caught by :func:`main`.
+    """
     config_path = Path(args.config or "otchet-compose.yml").resolve()
     config = load_config(config_path)
     generate_document(config)
@@ -13,6 +27,7 @@ def gen_command(args) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """Build and return the root argument parser with all subcommands."""
     parser = argparse.ArgumentParser(
         prog="otchet-compose",
         description="Генератор отчётов по лабораторным работам в формате DOCX",
@@ -32,6 +47,10 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main() -> int:
+    """Parse CLI arguments and dispatch to the appropriate subcommand.
+
+    Returns the integer exit code (0 = success, 1 = error).
+    """
     parser = build_parser()
     args = parser.parse_args()
 

@@ -1,9 +1,32 @@
+"""Low-level python-docx XML helpers.
+
+Functions here operate directly on OOXML elements and are reused across
+multiple generator modules.  They are intentionally free of any
+document-structure knowledge — they only know how to manipulate the XML
+primitives they receive.
+"""
+
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Pt, RGBColor
 
 
 def add_field_run(paragraph, instruction: str, placeholder: str = "", dirty: bool = False):
+    """Insert a Word complex field into *paragraph*.
+
+    Appends the standard ``begin → instrText → separate → [placeholder] → end``
+    sequence of ``w:fldChar`` elements to a new run in the paragraph.
+
+    Args:
+        paragraph: The python-docx ``Paragraph`` to append to.
+        instruction: The raw field instruction text (e.g. ``" PAGE "``).
+        placeholder: Visible text shown before the field is updated in Word.
+        dirty: When ``True`` sets ``w:dirty="true"`` so Word refreshes the
+            field on next open.
+
+    Returns:
+        The new ``Run`` that contains the field XML.
+    """
     """
     Вставляет complex field:
     begin -> instrText -> separate -> placeholder -> end
@@ -38,6 +61,11 @@ def add_field_run(paragraph, instruction: str, placeholder: str = "", dirty: boo
 
 
 def set_paragraph_outline_level(style, level: int) -> None:
+    """Set the ``w:outlineLvl`` XML attribute on *style*'s paragraph properties.
+
+    This is required for Word's built-in TOC to recognise custom styles as
+    headings.  *level* follows the OOXML convention: 0 = Heading 1, 1 = Heading 2, etc.
+    """
     p_pr = style.element.get_or_add_pPr()
     outline = p_pr.find(qn("w:outlineLvl"))
     if outline is None:
@@ -56,6 +84,21 @@ def set_font(
     underline=None,
     color=(0, 0, 0),
 ) -> None:
+    """Apply font properties to a style or run, including East-Asian font slots.
+
+    python-docx's ``font.name`` setter only fills ``w:ascii`` and ``w:hAnsi``;
+    this helper also sets ``w:cs`` and ``w:eastAsia`` so Cyrillic characters
+    render in Times New Roman instead of falling back to a default CJK font.
+
+    Args:
+        style_or_run: A python-docx ``_ParagraphStyle`` or ``Run`` object.
+        name: Font family name.
+        size: Font size in points.
+        bold: ``True``/``False`` or ``None`` to leave unchanged.
+        italic: ``True``/``False`` or ``None`` to leave unchanged.
+        underline: ``True``/``False`` or ``None`` to leave unchanged.
+        color: RGB triple ``(r, g, b)`` or ``None`` to leave unchanged.
+    """
     font = style_or_run.font
     font.name = name
 
@@ -81,6 +124,7 @@ def set_font(
 
 
 def set_table_borders(table) -> None:
+    """Apply a thin black single-line border to all six sides of *table*."""
     tbl = table._tbl
     tbl_pr = tbl.tblPr
 

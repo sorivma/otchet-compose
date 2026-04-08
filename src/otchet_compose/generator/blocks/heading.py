@@ -1,3 +1,11 @@
+"""Heading block handler.
+
+Validates ``type: heading`` blocks and renders them using the appropriate
+GOST heading style.  Structural headings (``structural: true``) are
+uppercased automatically and receive a page break when preceding content
+exists on the current page.
+"""
+
 from pathlib import Path
 
 from ..content import add_heading
@@ -7,6 +15,7 @@ _SUPPORTED_LEVELS = {1, 2, 3}
 
 
 class HeadingHandler:
+    """Handler for ``type: heading`` blocks."""
     def validate(self, block: dict, index: int, base_dir: Path) -> dict:
         text = block.get("text")
         level = block.get("level")

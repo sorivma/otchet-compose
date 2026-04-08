@@ -1,3 +1,11 @@
+"""Top-level document orchestrator.
+
+Wires together page setup, styles, and block rendering into a single
+:func:`generate_document` call.  Block-type dispatch is fully delegated
+to the :data:`~otchet_compose.generator.blocks.REGISTRY`; this module
+contains no block-specific logic.
+"""
+
 from pathlib import Path
 
 from docx import Document
@@ -9,12 +17,20 @@ from .styles import setup_styles
 
 
 def _remove_initial_empty_paragraph(doc) -> None:
+    """Remove the empty paragraph that python-docx inserts into every new Document."""
     if len(doc.paragraphs) == 1 and not doc.paragraphs[0].text:
         paragraph = doc.paragraphs[0]._element
         paragraph.getparent().remove(paragraph)
 
 
 def generate_document(config: dict) -> None:
+    """Generate a DOCX report from a validated config dict.
+
+    The *config* dict is the value returned by
+    :func:`~otchet_compose.config.load_config`.  The output file is
+    written to the path given in ``config["document"]["output"]``;
+    parent directories are created automatically.
+    """
     document_cfg = config["document"]
     content = config["content"]
 

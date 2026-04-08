@@ -1,3 +1,14 @@
+"""GOST-style paragraph style loader.
+
+Style definitions live in ``styles.json`` alongside this module.
+``setup_styles()`` reads that file, resolves the string-encoded
+measurements and enum keys to python-docx objects, and applies every
+spec to the document in order.
+
+Adding or tweaking a style requires only editing ``styles.json``; no
+Python changes are needed.
+"""
+
 import json
 from pathlib import Path
 
@@ -22,6 +33,7 @@ _LINE_SPACING_RULE = {
 
 
 def _parse_measurement(value: str):
+    """Convert a string measurement like ``"1.25cm"`` or ``"18pt"`` to a python-docx unit."""
     if value.endswith("cm"):
         return Cm(float(value[:-2]))
     if value.endswith("pt"):
@@ -30,6 +42,7 @@ def _parse_measurement(value: str):
 
 
 def _resolve_spec(raw: dict) -> dict:
+    """Resolve string-encoded values in a raw style spec to python-docx objects."""
     spec = {k: v for k, v in raw.items() if k != "para"}
     para = dict(raw["para"])
     para["alignment"] = _ALIGNMENT[para["alignment"]]
@@ -42,11 +55,13 @@ def _resolve_spec(raw: dict) -> dict:
 
 
 def _load_style_specs() -> list[dict]:
+    """Read ``styles.json`` and return a list of resolved style spec dicts."""
     with _STYLES_JSON.open("r", encoding="utf-8") as f:
         return [_resolve_spec(s) for s in json.load(f)]
 
 
 def _get_or_create_style(doc, name: str, base: str):
+    """Return the named style, creating it if it doesn't exist, and set its base style."""
     styles = doc.styles
     try:
         style = styles[name]
@@ -57,6 +72,7 @@ def _get_or_create_style(doc, name: str, base: str):
 
 
 def _expose_in_word_ui(style, priority: int) -> None:
+    """Make *style* visible in Word's style gallery at the given *priority*."""
     style.hidden = False
     style.unhide_when_used = True
     style.quick_style = True
@@ -65,6 +81,7 @@ def _expose_in_word_ui(style, priority: int) -> None:
 
 
 def _apply_spec(doc, spec: dict) -> None:
+    """Apply a single resolved style spec dict to *doc*."""
     name = spec["name"]
     style = (
         doc.styles["Normal"]
@@ -103,5 +120,6 @@ def _apply_spec(doc, spec: dict) -> None:
 
 
 def setup_styles(doc) -> None:
+    """Load ``styles.json`` and apply every style spec to *doc*."""
     for spec in _load_style_specs():
         _apply_spec(doc, spec)

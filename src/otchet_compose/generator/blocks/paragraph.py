@@ -1,3 +1,9 @@
+"""Paragraph block handler.
+
+Validates ``type: paragraph`` blocks and renders them as ``GOST Body
+Text`` paragraphs with a 1.25 cm first-line indent.
+"""
+
 from pathlib import Path
 
 from ..content import add_body_paragraph
@@ -5,6 +11,7 @@ from ._base import RenderContext
 
 
 class ParagraphHandler:
+    """Handler for ``type: paragraph`` blocks."""
     def validate(self, block: dict, index: int, base_dir: Path) -> dict:
         text = block.get("text")
 

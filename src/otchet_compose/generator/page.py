@@ -1,3 +1,9 @@
+"""Page layout and footer configuration.
+
+Handles A4 dimensions, GOST-style margins, and the page-number field
+inserted into the first section's footer.
+"""
+
 from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_LINE_SPACING
 from docx.shared import Cm, Pt
 
@@ -5,9 +11,14 @@ from .fields import add_field_run, set_font
 
 
 def setup_page(doc, hide_first_page_number: bool) -> None:
-    """
-    Настройка страницы по умолчанию:
-    А4, поля по ГОСТ-подобному шаблону.
+    """Configure the default section for A4 with GOST-style margins.
+
+    Margins: top/bottom 2 cm, left 3 cm, right 1.5 cm.
+
+    Args:
+        doc: The python-docx ``Document`` to configure.
+        hide_first_page_number: When ``True``, enables a separate
+            first-page header/footer so the title page has no page number.
     """
     section = doc.sections[0]
     section.page_width = Cm(21)
@@ -22,6 +33,7 @@ def setup_page(doc, hide_first_page_number: bool) -> None:
 
 
 def add_page_number(section) -> None:
+    """Insert a centred ``PAGE`` field into the footer of *section*."""
     footer = section.footer
     paragraph = footer.paragraphs[0] if footer.paragraphs else footer.add_paragraph()
 

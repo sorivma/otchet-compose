@@ -1,3 +1,11 @@
+"""YAML configuration loader and validator.
+
+Reads an ``otchet-compose.yml`` file, validates its structure, and returns
+a normalised plain :class:`dict` that the generator can consume without
+any further YAML awareness.  All relative file paths are resolved to
+absolute paths relative to the config file's parent directory.
+"""
+
 from pathlib import Path
 import yaml
 
@@ -8,6 +16,15 @@ SUPPORTED_VERSION = 1
 
 
 def load_config(config_path: Path) -> dict:
+    """Load and validate a YAML config file, returning a normalised dict.
+
+    The returned dict always contains the keys ``version``, ``document``,
+    and ``content``.  All file paths inside the dict are absolute strings.
+
+    Raises:
+        FileNotFoundError: if *config_path* does not exist.
+        ValueError: if the YAML structure violates the schema.
+    """
     config_path = config_path.resolve()
 
     if not config_path.exists():
@@ -38,6 +55,7 @@ def load_config(config_path: Path) -> dict:
 
 
 def _validate_document(document: object, base_dir: Path) -> dict:
+    """Validate the ``document`` section and return a normalised dict."""
     if not isinstance(document, dict):
         raise ValueError("Секция document обязательна и должна быть объектом")
 
@@ -63,6 +81,7 @@ def _validate_document(document: object, base_dir: Path) -> dict:
 
 
 def _validate_content(content: object, base_dir: Path) -> list[dict]:
+    """Validate the ``content`` list and return a list of normalised block dicts."""
     if not isinstance(content, list) or not content:
         raise ValueError("content обязателен и должен быть непустым списком")
 
@@ -70,6 +89,7 @@ def _validate_content(content: object, base_dir: Path) -> list[dict]:
 
 
 def _validate_block(block: object, index: int, base_dir: Path) -> dict:
+    """Dispatch a single raw block to the appropriate handler's ``validate``."""
     if not isinstance(block, dict):
         raise ValueError(f"Блок content[{index}] должен быть объектом")
 
@@ -84,6 +104,7 @@ def _validate_block(block: object, index: int, base_dir: Path) -> dict:
 
 
 def _resolve_path(base_dir: Path, raw_path: str) -> Path:
+    """Resolve *raw_path* relative to *base_dir*; absolute paths are kept as-is."""
     path = Path(raw_path)
     if path.is_absolute():
         return path.resolve()

@@ -1,3 +1,12 @@
+"""Figure block handler.
+
+Validates ``type: figure`` blocks and renders them as either an embedded
+image (when ``path`` points to an existing file) or a bordered placeholder
+table.  Each rendered figure increments
+:attr:`~otchet_compose.generator.blocks._base.RenderContext.figure_counter`
+so captions are numbered consecutively across the document.
+"""
+
 from pathlib import Path
 
 from ..content import add_figure
@@ -5,6 +14,7 @@ from ._base import RenderContext
 
 
 class FigureHandler:
+    """Handler for ``type: figure`` blocks."""
     def validate(self, block: dict, index: int, base_dir: Path) -> dict:
         caption = block.get("caption")
         path = block.get("path")
