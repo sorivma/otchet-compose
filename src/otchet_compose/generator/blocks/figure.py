@@ -9,12 +9,17 @@ so captions are numbered consecutively across the document.
 
 from pathlib import Path
 
-from ..content import add_figure
+from docx.enum.table import WD_ALIGN_VERTICAL, WD_ROW_HEIGHT_RULE
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.shared import Cm
+
+from ..fields import set_table_borders
 from ._base import RenderContext
 
 
 class FigureHandler:
     """Handler for ``type: figure`` blocks."""
+
     def validate(self, block: dict, index: int, base_dir: Path) -> dict:
         caption = block.get("caption")
         path = block.get("path")
@@ -39,17 +44,49 @@ class FigureHandler:
         }
 
     def render(self, doc, block: dict, ctx: RenderContext) -> None:
+        """Append a figure (image or placeholder) and its numbered caption."""
         ctx.figure_counter += 1
-        add_figure(
-            doc,
-            caption=block["caption"],
-            image_path=block.get("path"),
-            figure_number=ctx.figure_counter,
-        )
+        image_path = block.get("path")
+
+        if image_path and Path(image_path).exists():
+            paragraph = doc.add_paragraph()
+            paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            paragraph.add_run().add_picture(image_path, width=Cm(16))
+        else:
+            _add_placeholder(doc)
+
+        _add_caption(doc, ctx.figure_counter, block["caption"])
         ctx.current_page_has_content = True
 
 
+def _add_placeholder(doc) -> None:
+    """Insert a 12 × 7 cm bordered table as a figure placeholder."""
+    table = doc.add_table(rows=1, cols=1)
+    table.autofit = False
+    set_table_borders(table)
+
+    cell = table.cell(0, 0)
+    cell.width = Cm(12)
+    cell.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+
+    row = table.rows[0]
+    row.height = Cm(7)
+    row.height_rule = WD_ROW_HEIGHT_RULE.EXACTLY
+
+    paragraph = cell.paragraphs[0]
+    paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    paragraph.style = "GOST Figure Placeholder"
+    paragraph.add_run("Изображение отсутствует")
+
+
+def _add_caption(doc, figure_number: int, text: str) -> None:
+    """Append a ``GOST Caption`` paragraph formatted as "Рисунок N – text"."""
+    caption_text = f"Рисунок {figure_number} – {text.strip().rstrip('.')}"
+    doc.add_paragraph(caption_text, style="GOST Caption")
+
+
 def _resolve_path(base_dir: Path, raw_path: str) -> Path:
+    """Resolve *raw_path* relative to *base_dir*; absolute paths are kept as-is."""
     path = Path(raw_path)
     if path.is_absolute():
         return path.resolve()

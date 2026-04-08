@@ -6,12 +6,14 @@ Text`` paragraphs with a 1.25 cm first-line indent.
 
 from pathlib import Path
 
-from ..content import add_body_paragraph
+from docx.shared import Cm
+
 from ._base import RenderContext
 
 
 class ParagraphHandler:
     """Handler for ``type: paragraph`` blocks."""
+
     def validate(self, block: dict, index: int, base_dir: Path) -> dict:
         text = block.get("text")
 
@@ -26,5 +28,7 @@ class ParagraphHandler:
         }
 
     def render(self, doc, block: dict, ctx: RenderContext) -> None:
-        add_body_paragraph(doc, block["text"])
+        """Append a ``GOST Body Text`` paragraph with a 1.25 cm first-line indent."""
+        paragraph = doc.add_paragraph(block["text"], style="GOST Body Text")
+        paragraph.paragraph_format.first_line_indent = Cm(1.25)
         ctx.current_page_has_content = True

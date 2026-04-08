@@ -8,7 +8,6 @@ exists on the current page.
 
 from pathlib import Path
 
-from ..content import add_heading
 from ._base import RenderContext
 
 _SUPPORTED_LEVELS = {1, 2, 3}
@@ -16,6 +15,7 @@ _SUPPORTED_LEVELS = {1, 2, 3}
 
 class HeadingHandler:
     """Handler for ``type: heading`` blocks."""
+
     def validate(self, block: dict, index: int, base_dir: Path) -> dict:
         text = block.get("text")
         level = block.get("level")
@@ -43,11 +43,18 @@ class HeadingHandler:
         }
 
     def render(self, doc, block: dict, ctx: RenderContext) -> None:
-        add_heading(
-            doc,
-            text=block["text"],
-            level=block["level"],
-            structural=block["structural"],
-            page_break_before=block["structural"] and ctx.current_page_has_content,
-        )
+        """Append a heading paragraph, inserting a page break for structural headings."""
+        text = block["text"]
+        level = block["level"]
+        structural = block["structural"]
+
+        if structural:
+            if ctx.current_page_has_content:
+                doc.add_page_break()
+            style_name = "GOST Heading 1" if level == 1 else "GOST Heading 2"
+            doc.add_paragraph(text.upper(), style=style_name)
+        else:
+            style_name = {1: "GOST Heading 1", 2: "GOST Heading 2", 3: "GOST Heading 3"}[level]
+            doc.add_paragraph(text, style=style_name)
+
         ctx.current_page_has_content = True

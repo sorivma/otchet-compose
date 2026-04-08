@@ -9,9 +9,10 @@ contains no block-specific logic.
 from pathlib import Path
 
 from docx import Document
+from docx.shared import Cm
 
 from .blocks import REGISTRY, RenderContext
-from .content import add_toc
+from .fields import add_field_run
 from .page import add_page_number, setup_page
 from .styles import setup_styles
 
@@ -21,6 +22,26 @@ def _remove_initial_empty_paragraph(doc) -> None:
     if len(doc.paragraphs) == 1 and not doc.paragraphs[0].text:
         paragraph = doc.paragraphs[0]._element
         paragraph.getparent().remove(paragraph)
+
+
+def _add_toc(doc) -> None:
+    """Insert a Word TOC field preceded by a "СОДЕРЖАНИЕ" title paragraph.
+
+    The field uses ``\\o "1-3" \\h \\z \\u`` switches (levels 1–3, hyperlinks,
+    hide tab leaders, use applied paragraph outline levels).  The placeholder
+    text reminds users to update fields in Word before printing.
+    """
+    doc.add_paragraph("СОДЕРЖАНИЕ", style="GOST TOC Title")
+
+    paragraph = doc.add_paragraph(style="GOST Service")
+    paragraph.paragraph_format.first_line_indent = Cm(0)
+
+    add_field_run(
+        paragraph,
+        r' TOC \o "1-3" \h \z \u ',
+        "Оглавление будет сформировано после ручного обновления полей в Microsoft Word.",
+        dirty=False,
+    )
 
 
 def generate_document(config: dict) -> None:
@@ -47,7 +68,7 @@ def generate_document(config: dict) -> None:
         doc.add_page_break()
 
     if document_cfg["toc"]:
-        add_toc(doc)
+        _add_toc(doc)
         ctx.current_page_has_content = True
 
     for block in content:
