@@ -1,12 +1,19 @@
 """GOST-style paragraph style loader.
 
-Style definitions live in ``styles.json`` alongside this module.
-``setup_styles()`` reads that file, resolves the string-encoded
-measurements and enum keys to python-docx objects, and applies every
-spec to the document in order.
+Style definitions are loaded from ``styles.json`` using a two-location
+lookup:
 
-Adding or tweaking a style requires only editing ``styles.json``; no
-Python changes are needed.
+1. ``~/.otchet-compose/styles.json`` — user override (checked first).
+2. The ``styles.json`` bundled alongside this module — default fallback.
+
+This means the tool works out of the box with no setup, but a user can
+drop their own ``styles.json`` into ``~/.otchet-compose/`` to fully
+customise fonts, spacing, and Word UI priorities without touching the
+package source.
+
+The JSON format uses string measurements (``"1.25cm"``, ``"18pt"``) and
+string enum keys (``"justify"``, ``"one_point_five"``); see the bundled
+``styles.json`` for a complete annotated example.
 """
 
 import json
@@ -18,7 +25,8 @@ from docx.shared import Cm, Pt
 
 from .fields import set_font, set_paragraph_outline_level
 
-_STYLES_JSON = Path(__file__).parent / "styles.json"
+_BUNDLED_STYLES_JSON = Path(__file__).parent / "styles.json"
+_USER_STYLES_JSON = Path.home() / ".otchet-compose" / "styles.json"
 
 _ALIGNMENT = {
     "justify": WD_ALIGN_PARAGRAPH.JUSTIFY,
@@ -54,9 +62,20 @@ def _resolve_spec(raw: dict) -> dict:
     return spec
 
 
+def _locate_styles_json() -> Path:
+    """Return the styles JSON path to use.
+
+    Prefers ``~/.otchet-compose/styles.json`` when it exists so users can
+    override the bundled defaults without modifying the package.
+    """
+    if _USER_STYLES_JSON.exists():
+        return _USER_STYLES_JSON
+    return _BUNDLED_STYLES_JSON
+
+
 def _load_style_specs() -> list[dict]:
-    """Read ``styles.json`` and return a list of resolved style spec dicts."""
-    with _STYLES_JSON.open("r", encoding="utf-8") as f:
+    """Read the active ``styles.json`` and return a list of resolved style spec dicts."""
+    with _locate_styles_json().open("r", encoding="utf-8") as f:
         return [_resolve_spec(s) for s in json.load(f)]
 
 
