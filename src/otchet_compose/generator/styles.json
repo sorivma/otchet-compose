@@ -128,5 +128,20 @@
       "line_spacing": 1.0,
       "line_spacing_rule": "single"
     }
+  },
+  {
+    "name": "GOST List",
+    "base": "Normal",
+    "priority": 8,
+    "font": { "size": 14, "bold": false, "italic": false, "underline": false },
+    "para": {
+      "alignment": "justify",
+      "first_line_indent": "-0.5cm",
+      "left_indent": "1.75cm",
+      "space_before": "0pt",
+      "space_after": "0pt",
+      "line_spacing": 1.5,
+      "line_spacing_rule": "one_point_five"
+    }
   }
 ]

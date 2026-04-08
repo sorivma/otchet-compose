@@ -16,12 +16,14 @@ No other files need to change.
 from ._base import BlockHandler, RenderContext
 from .figure import FigureHandler
 from .heading import HeadingHandler
+from .list import ListHandler
 from .paragraph import ParagraphHandler
 
 REGISTRY: dict[str, BlockHandler] = {
     "heading": HeadingHandler(),
     "paragraph": ParagraphHandler(),
     "figure": FigureHandler(),
+    "list": ListHandler(),
 }
 
 __all__ = ["REGISTRY", "RenderContext", "BlockHandler"]

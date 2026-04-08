@@ -61,6 +61,10 @@ def _resolve_spec(raw: dict) -> dict:
     para["first_line_indent"] = _parse_measurement(para["first_line_indent"])
     para["space_before"] = _parse_measurement(para["space_before"])
     para["space_after"] = _parse_measurement(para["space_after"])
+    if "left_indent" in para:
+        para["left_indent"] = _parse_measurement(para["left_indent"])
+    if "right_indent" in para:
+        para["right_indent"] = _parse_measurement(para["right_indent"])
     spec["para"] = para
     return spec
 
@@ -142,8 +146,8 @@ def _apply_spec(doc, spec: dict) -> None:
     para = spec["para"]
     pf.alignment = para["alignment"]
     pf.first_line_indent = para["first_line_indent"]
-    pf.left_indent = Cm(0)
-    pf.right_indent = Cm(0)
+    pf.left_indent = para.get("left_indent", Cm(0))
+    pf.right_indent = para.get("right_indent", Cm(0))
     pf.space_before = para["space_before"]
     pf.space_after = para["space_after"]
     pf.line_spacing = para["line_spacing"]
