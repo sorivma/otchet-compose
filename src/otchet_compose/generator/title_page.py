@@ -42,6 +42,12 @@ _PLACEHOLDER_RE = re.compile(r"\{\{([^}]+)\}\}")
 def render_title_page(doc, name: str, params: dict) -> None:
     """Render the named title page template as the first content of *doc*.
 
+    Emits warnings to stderr when:
+    - a key in *params* has no matching ``{{key}}`` placeholder in the template
+      (the value is silently ignored, which is likely a typo);
+    - a ``{{key}}`` placeholder in the template has no matching key in *params*
+      (the placeholder is left as-is in the output, which is almost never intended).
+
     Args:
         doc: The python-docx ``Document`` being built.
         name: Template name without the ``.docx`` extension.
@@ -52,6 +58,7 @@ def render_title_page(doc, name: str, params: dict) -> None:
     """
     path = _locate_template(name)
     tmpl = Document(str(path))
+    _warn_param_mismatches(tmpl, params, name)
     _substitute_all(tmpl, params)
     _prepend_body(doc, tmpl)
 
@@ -90,6 +97,42 @@ def _locate_template(name: str) -> Path:
         f"Чтобы добавить собственный шаблон, поместите "
         f"{name}.docx в {_USER_TEMPLATES_DIR}."
     )
+
+
+# ---------------------------------------------------------------------------
+# Param / placeholder mismatch warnings
+# ---------------------------------------------------------------------------
+
+def _collect_placeholders(tmpl_doc) -> set[str]:
+    """Return the set of all ``{{key}}`` keys found in *tmpl_doc*."""
+    keys: set[str] = set()
+    for para in _iter_all_paragraphs(tmpl_doc):
+        full_text = "".join(run.text for run in para.runs)
+        for m in _PLACEHOLDER_RE.finditer(full_text):
+            keys.add(m.group(1).strip())
+    return keys
+
+
+def _warn_param_mismatches(tmpl_doc, params: dict, name: str) -> None:
+    """Print warnings for unused params and unfilled placeholders."""
+    placeholders = _collect_placeholders(tmpl_doc)
+    param_keys = set(params.keys())
+
+    unused = param_keys - placeholders
+    for key in sorted(unused):
+        print(
+            f"Предупреждение: параметр '{key}' передан в шаблон '{name}', "
+            f"но плейсхолдер {{{{key}}}} в шаблоне не найден.",
+            flush=True,
+        )
+
+    unfilled = placeholders - param_keys
+    for key in sorted(unfilled):
+        print(
+            f"Предупреждение: плейсхолдер '{{{{{key}}}}}' найден в шаблоне '{name}', "
+            f"но значение для него не задано в title_page.params.",
+            flush=True,
+        )
 
 
 # ---------------------------------------------------------------------------
