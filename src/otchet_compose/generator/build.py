@@ -58,7 +58,8 @@ def generate_document(config: dict) -> None:
 
     doc = Document()
 
-    PageSetup.apply(doc, hide_first_page_number=document_cfg.get("reserve_title_page", False))
+    hide_first = bool(document_cfg.get("title_page") or document_cfg.get("reserve_title_page", False))
+    PageSetup.apply(doc, hide_first_page_number=hide_first)
     setup_styles(doc)
     _remove_initial_empty_paragraph(doc)
 
