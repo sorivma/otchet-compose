@@ -183,37 +183,48 @@ def _substitute_paragraph(para, params: dict) -> None:
 def _prepend_body(doc, tmpl_doc) -> None:
     """Insert all non-sectPr body elements of *tmpl_doc* at the start of *doc*.
 
-    A page break paragraph is appended after the template content so that the
-    report body always starts on a fresh page regardless of how the template
-    file ends.  This relieves template authors from having to remember to add
-    a manual page break at the bottom of their file.
+    A page break is injected into the last paragraph of the template so that
+    the report body always starts on a fresh page.  Injecting into the last
+    paragraph (rather than appending a separate empty paragraph) avoids the
+    extra blank page that a standalone page-break paragraph would produce.
     """
+    elements = [
+        copy.deepcopy(elem)
+        for elem in tmpl_doc.element.body
+        if elem.tag != qn("w:sectPr")
+    ]
+
+    _inject_page_break(elements)
+
     body = doc.element.body
     children = list(body)
     insert_before = children[0] if children else None
 
-    def _insert(elem):
+    for elem in elements:
         if insert_before is not None:
             body.insert(list(body).index(insert_before), elem)
         else:
             body.append(elem)
 
-    for elem in tmpl_doc.element.body:
-        if elem.tag == qn("w:sectPr"):
-            continue
-        _insert(copy.deepcopy(elem))
 
-    # Guarantee a page break between the title page and the report body.
-    _insert(_make_page_break_paragraph())
+def _inject_page_break(elements: list) -> None:
+    """Add a ``w:br type="page"`` run to the last ``w:p`` in *elements*.
 
-
-def _make_page_break_paragraph():
-    """Return a ``w:p`` element containing a ``w:lastRenderedPageBreak``-style
-    page break run (``w:br`` with ``w:type="page"``)."""
-    p_elem = OxmlElement("w:p")
-    r_elem = OxmlElement("w:r")
+    Searching from the end ensures the break lands on the final content
+    paragraph (e.g. "Москва 2026") rather than creating an orphan paragraph.
+    If no paragraph exists at all, a standalone page-break paragraph is appended.
+    """
     br = OxmlElement("w:br")
     br.set(qn("w:type"), "page")
-    r_elem.append(br)
-    p_elem.append(r_elem)
-    return p_elem
+    r = OxmlElement("w:r")
+    r.append(br)
+
+    for elem in reversed(elements):
+        if elem.tag == qn("w:p"):
+            elem.append(r)
+            return
+
+    # Fallback: no paragraph found in template — append a standalone one.
+    p_elem = OxmlElement("w:p")
+    p_elem.append(r)
+    elements.append(p_elem)
