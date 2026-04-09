@@ -18,12 +18,14 @@ from .figure import FigureHandler
 from .heading import HeadingHandler
 from .list import ListHandler
 from .paragraph import ParagraphHandler
+from .table import TableHandler
 
 REGISTRY: dict[str, BlockHandler] = {
     "heading": HeadingHandler(),
     "paragraph": ParagraphHandler(),
     "figure": FigureHandler(),
     "list": ListHandler(),
+    "table": TableHandler(),
 }
 
 __all__ = ["REGISTRY", "RenderContext", "BlockHandler"]

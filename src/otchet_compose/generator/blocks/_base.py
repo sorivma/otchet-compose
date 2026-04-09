@@ -21,12 +21,15 @@ class RenderContext:
     Attributes:
         figure_counter: Incremented by each rendered figure; used for
             sequential caption numbering.
+        table_counter: Incremented by each rendered table; used for
+            sequential caption numbering.
         current_page_has_content: ``True`` once at least one visible element
             has been written to the current page.  Used by structural headings
             to decide whether to insert a page break before themselves.
     """
 
     figure_counter: int = 0
+    table_counter: int = 0
     current_page_has_content: bool = False
 
 

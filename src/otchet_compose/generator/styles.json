@@ -142,5 +142,33 @@
       "line_spacing": 1.5,
       "line_spacing_rule": "one_point_five"
     }
+  },
+  {
+    "name": "GOST Table Caption",
+    "base": "Normal",
+    "priority": 9,
+    "font": { "size": 14, "bold": false, "italic": false, "underline": false },
+    "para": {
+      "alignment": "right",
+      "first_line_indent": "0cm",
+      "space_before": "6pt",
+      "space_after": "3pt",
+      "line_spacing": 1.0,
+      "line_spacing_rule": "single"
+    }
+  },
+  {
+    "name": "GOST Table Cell",
+    "base": "Normal",
+    "priority": 10,
+    "font": { "size": 14, "bold": false, "italic": false, "underline": false },
+    "para": {
+      "alignment": "left",
+      "first_line_indent": "0cm",
+      "space_before": "0pt",
+      "space_after": "0pt",
+      "line_spacing": 1.0,
+      "line_spacing_rule": "single"
+    }
   }
 ]
