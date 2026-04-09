@@ -1,19 +1,12 @@
-"""Built-in programmatic title page templates.
+"""Bundled title page templates directory.
 
-Each entry in ``BUILTIN_TEMPLATES`` is a callable with signature::
+All ``.docx`` files in this directory are shipped with the tool and are
+available by their stem name (e.g. ``mirea.docx`` → template name ``mirea``).
 
-    fn(doc: Document, params: dict) -> None
-
-It renders a title page directly into *doc* using python-docx primitives,
-so no external file is needed and no styles from a foreign DOCX are imported.
-
-To add a new built-in template:
-1. Create ``<name>.py`` in this package and implement the render function.
-2. Add one entry to ``BUILTIN_TEMPLATES`` below.
+Users can override any bundled template — or add new ones — by placing a
+``.docx`` file with the same name in ``~/.otchet-compose/templates/``.
 """
 
-from .mirea import render as _mirea
+from pathlib import Path
 
-BUILTIN_TEMPLATES: dict = {
-    "mirea": _mirea,
-}
+BUNDLED_TEMPLATES_DIR: Path = Path(__file__).parent

@@ -1,27 +1,28 @@
 """Title page renderer.
 
-Two template sources are supported, checked in this order:
+Templates are ``.docx`` files with ``{{key}}`` placeholders in their text.
+Two directories are searched, in order:
 
-1. **User .docx templates** — ``~/.otchet-compose/templates/<name>.docx``
-   Placeholders inside the DOCX text use ``{{key}}`` syntax. The file is
-   loaded with python-docx, all placeholders are substituted, and then the
-   body content is prepended to the output document.
+1. ``~/.otchet-compose/templates/<name>.docx``  — user-defined (checked first)
+2. ``<package>/generator/templates/<name>.docx`` — bundled with the tool
 
-2. **Built-in programmatic templates** — defined in
-   :mod:`~otchet_compose.generator.templates` as Python functions.
-   They render directly with python-docx so no external file is required.
-
-The lookup is identical to ``styles.json``: user files always win over
-built-ins, allowing a user to shadow a built-in by placing a file with
-the same name in ``~/.otchet-compose/templates/``.
+User templates always shadow bundled ones of the same name.  To inspect or
+customise a bundled template, copy it from the package directory to
+``~/.otchet-compose/templates/`` and edit it in Word.
 
 Placeholder substitution
 ------------------------
-``{{key}}`` tokens are replaced by the matching value in *params*.  A token
-whose key is absent in *params* is left unchanged.  Tokens that span
-multiple python-docx ``Run`` objects (Word can split a word into several
-runs for internal reasons) are handled by collapsing the paragraph text
-into the first run before substitution.
+``{{key}}`` tokens are replaced by the matching value from *params*.
+Missing keys are left unchanged.  Tokens that Word has split across multiple
+``Run`` objects are handled by collapsing the paragraph text into the first
+run before substitution.
+
+Merging
+-------
+All body elements of the template (except its ``w:sectPr``) are prepended
+to the output document.  Styles and relationships (e.g. images) from the
+template are **not** transferred — template authors should use only standard
+Word styles and avoid embedded images.
 """
 
 import copy
@@ -31,10 +32,9 @@ from pathlib import Path
 from docx import Document
 from docx.oxml.ns import qn
 
-from .templates import BUILTIN_TEMPLATES
+from .templates import BUNDLED_TEMPLATES_DIR
 
 _USER_TEMPLATES_DIR = Path.home() / ".otchet-compose" / "templates"
-
 _PLACEHOLDER_RE = re.compile(r"\{\{([^}]+)\}\}")
 
 
@@ -43,40 +43,57 @@ def render_title_page(doc, name: str, params: dict) -> None:
 
     Args:
         doc: The python-docx ``Document`` being built.
-        name: Template name (without ``.docx`` extension).
+        name: Template name without the ``.docx`` extension.
         params: Mapping of placeholder keys to replacement strings.
 
     Raises:
         ValueError: If no template with *name* is found in either location.
     """
-    user_path = _USER_TEMPLATES_DIR / f"{name}.docx"
-
-    if user_path.exists():
-        _render_docx_template(doc, user_path, params)
-    elif name in BUILTIN_TEMPLATES:
-        BUILTIN_TEMPLATES[name](doc, params)
-    else:
-        _raise_not_found(name)
+    path = _locate_template(name)
+    tmpl = Document(str(path))
+    _substitute_all(tmpl, params)
+    _prepend_body(doc, tmpl)
 
 
 def list_available_templates() -> list[str]:
-    """Return sorted names of all available templates (built-ins + user files)."""
-    names = set(BUILTIN_TEMPLATES.keys())
+    """Return sorted names of all available templates (user + bundled, deduplicated)."""
+    names: set[str] = {p.stem for p in BUNDLED_TEMPLATES_DIR.glob("*.docx")}
     if _USER_TEMPLATES_DIR.exists():
         names.update(p.stem for p in _USER_TEMPLATES_DIR.glob("*.docx"))
     return sorted(names)
 
 
 # ---------------------------------------------------------------------------
-# User .docx template rendering
+# Template lookup
 # ---------------------------------------------------------------------------
 
-def _render_docx_template(doc, template_path: Path, params: dict) -> None:
-    """Load *template_path*, substitute params, and prepend its body into *doc*."""
-    tmpl = Document(str(template_path))
-    _substitute_all(tmpl, params)
-    _prepend_body(doc, tmpl)
+def _locate_template(name: str) -> Path:
+    """Return the path to the *name* template, preferring user over bundled.
 
+    Raises:
+        ValueError: If no matching ``.docx`` file is found.
+    """
+    user_path = _USER_TEMPLATES_DIR / f"{name}.docx"
+    if user_path.exists():
+        return user_path
+
+    bundled_path = BUNDLED_TEMPLATES_DIR / f"{name}.docx"
+    if bundled_path.exists():
+        return bundled_path
+
+    available = list_available_templates()
+    hint = ", ".join(available) if available else "нет"
+    raise ValueError(
+        f"Шаблон титульного листа {name!r} не найден. "
+        f"Доступные шаблоны: {hint}. "
+        f"Чтобы добавить собственный шаблон, поместите "
+        f"{name}.docx в {_USER_TEMPLATES_DIR}."
+    )
+
+
+# ---------------------------------------------------------------------------
+# Placeholder substitution
+# ---------------------------------------------------------------------------
 
 def _substitute_all(tmpl_doc, params: dict) -> None:
     """Replace ``{{key}}`` in every paragraph of *tmpl_doc*, including tables."""
@@ -94,12 +111,11 @@ def _iter_all_paragraphs(doc):
 
 
 def _substitute_paragraph(para, params: dict) -> None:
-    """Substitute ``{{key}}`` tokens in *para*, handling cross-run splits.
+    """Substitute ``{{key}}`` in *para*, handling tokens split across runs.
 
-    Word sometimes splits a token like ``{{name}}`` across several ``Run``
-    objects.  To handle this correctly the method collapses all run text into
-    the first run (preserving its character format), performs substitution,
-    then clears the remaining runs.
+    Word may internally split a token like ``{{name}}`` across several ``Run``
+    objects.  This method collapses all run texts into the first run (keeping
+    its character formatting), performs substitution, then clears the rest.
     """
     full_text = "".join(run.text for run in para.runs)
     if "{{" not in full_text:
@@ -116,37 +132,21 @@ def _substitute_paragraph(para, params: dict) -> None:
             run.text = ""
 
 
-def _prepend_body(doc, tmpl_doc) -> None:
-    """Insert all non-sectPr body elements of *tmpl_doc* at the start of *doc*.
+# ---------------------------------------------------------------------------
+# Document merging
+# ---------------------------------------------------------------------------
 
-    Note: only the XML elements are copied; relationships (images, embedded
-    objects) from the template document are *not* transferred.  For purely
-    text-based title pages this is sufficient.
-    """
+def _prepend_body(doc, tmpl_doc) -> None:
+    """Insert all non-sectPr body elements of *tmpl_doc* at the start of *doc*."""
     body = doc.element.body
     children = list(body)
     insert_before = children[0] if children else None
 
     for elem in tmpl_doc.element.body:
         if elem.tag == qn("w:sectPr"):
-            continue  # do not import the template's section/page-break settings
+            continue
         cloned = copy.deepcopy(elem)
         if insert_before is not None:
             body.insert(list(body).index(insert_before), cloned)
         else:
             body.append(cloned)
-
-
-# ---------------------------------------------------------------------------
-# Error helpers
-# ---------------------------------------------------------------------------
-
-def _raise_not_found(name: str) -> None:
-    available = list_available_templates()
-    hint = ", ".join(available) if available else "нет"
-    raise ValueError(
-        f"Шаблон титульного листа {name!r} не найден. "
-        f"Доступные шаблоны: {hint}. "
-        f"Чтобы использовать собственный шаблон, поместите "
-        f"<name>.docx в {_USER_TEMPLATES_DIR}."
-    )
