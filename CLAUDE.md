@@ -29,6 +29,11 @@ src/otchet_compose/
     styles.json        – style definitions (font, spacing, indent); override via ~/.otchet-compose/styles.json
     page.py            – page size/margins (PageSetup class), footer page-number field
     fields.py          – OxmlHelper: low-level OOXML helpers (Word fields, fonts)
+    title_page.py      – template lookup, {{key}} substitution, body merge into output document
+    templates/
+      __init__.py      – exposes BUNDLED_TEMPLATES_DIR (path to this directory)
+      rut.docx         – bundled template: РТУ МИРЭА
+      mock.docx        – bundled template: extended with institute/department fields
     blocks/
       __init__.py      – REGISTRY dict mapping block type string → handler instance
       _base.py         – RenderContext dataclass (figure_counter, table_counter, current_page_has_content)
@@ -69,7 +74,18 @@ Five block types are supported. The required top-level keys are `version: 1`, `d
 version: 1
 document:
   output: "./build/report.docx"
-  reserve_title_page: true   # leaves blank page 1 for a cover sheet
+  # Title page from a .docx template (optional).
+  # When set, reserve_title_page is ignored.
+  title_page:
+    template: rut     # name without .docx; user ~/.otchet-compose/templates/ takes priority
+    params:
+      discipline: "Операционные системы"
+      work_number: "№ 4"
+      student: "Иванов И.И."
+      group: "ИКБО-01-22"
+      teacher: "Петров П.П."
+      year: "2025"
+  reserve_title_page: false  # leaves blank page 1 for a cover sheet (alternative to title_page)
   toc: true                  # inserts a Word TOC field (must be updated in Word)
 content:
   - type: heading
@@ -92,7 +108,7 @@ content:
       - "Second item"
 
   - type: table
-    caption: "Caption without table number"    # number is auto-assigned; caption is above table
+    caption: "Caption without table number"    # number is auto-assigned; caption above, right-aligned
     headers:
       - "Column A"
       - "Column B"
@@ -104,6 +120,23 @@ content:
 `structural: true` headings are uppercased automatically and always use `GOST Heading 1` style regardless of `level`. Non-structural headings use `GOST Heading 1/2/3` matching `level`.
 
 Figure captions are rendered below the figure as "Рисунок N – text". Table captions are rendered above the table as "Таблица N – text", right-aligned. Both counters are independent and auto-incremented.
+
+## Title page templates
+
+Templates are `.docx` files with `{{key}}` placeholders. Lookup order (user wins):
+1. `~/.otchet-compose/templates/<name>.docx`
+2. `src/otchet_compose/generator/templates/<name>.docx` (bundled)
+
+The page break separating the title page from the report body is injected automatically into the last paragraph of the template — template authors do not need to add it manually.
+
+Warnings are printed when a param key has no matching placeholder in the template, or a placeholder has no matching param value.
+
+Bundled template params:
+
+| Template | Params |
+|---|---|
+| `rut` | `discipline`, `work_number`, `work_title`, `student`, `group`, `teacher`, `year` |
+| `mock` | `institute`, `department`, `discipline`, `work_type`, `work_number`, `work_title`, `student`, `group`, `teacher`, `year` |
 
 ## Reference files
 
