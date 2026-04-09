@@ -135,8 +135,8 @@ Bundled template params:
 
 | Template | Params |
 |---|---|
-| `rut` | `discipline`, `work_number`, `work_title`, `student`, `group`, `teacher`, `year` |
-| `mock` | `institute`, `department`, `discipline`, `work_type`, `work_number`, `work_title`, `student`, `group`, `teacher`, `year` |
+| `rut` (РУТ МИИТ) | `discipline`, `work_number`, `work_title`, `student`, `group`, `teacher`, `year` |
+| `mock` (тестовый) | `institute`, `department`, `discipline`, `work_type`, `work_number`, `work_title`, `student`, `group`, `teacher`, `year` |
 
 ## Reference files
 
