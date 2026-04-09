@@ -73,10 +73,37 @@ def _validate_document(document: object, base_dir: Path) -> dict:
 
     output_path = _resolve_path(base_dir, output)
 
+    title_page = _validate_title_page(document.get("title_page"))
+
     return {
         "output": str(output_path),
         "reserve_title_page": reserve_title_page,
         "toc": toc,
+        "title_page": title_page,
+    }
+
+
+def _validate_title_page(title_page: object) -> dict | None:
+    """Validate the optional ``document.title_page`` subsection."""
+    if title_page is None:
+        return None
+
+    if not isinstance(title_page, dict):
+        raise ValueError("document.title_page должен быть объектом")
+
+    template = title_page.get("template")
+    if not isinstance(template, str) or not template.strip():
+        raise ValueError(
+            "document.title_page.template обязателен и должен быть непустой строкой"
+        )
+
+    params = title_page.get("params", {})
+    if not isinstance(params, dict):
+        raise ValueError("document.title_page.params должен быть объектом (ключ: значение)")
+
+    return {
+        "template": template.strip(),
+        "params": {str(k): str(v) for k, v in params.items()},
     }
 
 
