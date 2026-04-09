@@ -30,6 +30,7 @@ import re
 from pathlib import Path
 
 from docx import Document
+from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 
 from .templates import BUNDLED_TEMPLATES_DIR
@@ -137,16 +138,39 @@ def _substitute_paragraph(para, params: dict) -> None:
 # ---------------------------------------------------------------------------
 
 def _prepend_body(doc, tmpl_doc) -> None:
-    """Insert all non-sectPr body elements of *tmpl_doc* at the start of *doc*."""
+    """Insert all non-sectPr body elements of *tmpl_doc* at the start of *doc*.
+
+    A page break paragraph is appended after the template content so that the
+    report body always starts on a fresh page regardless of how the template
+    file ends.  This relieves template authors from having to remember to add
+    a manual page break at the bottom of their file.
+    """
     body = doc.element.body
     children = list(body)
     insert_before = children[0] if children else None
 
+    def _insert(elem):
+        if insert_before is not None:
+            body.insert(list(body).index(insert_before), elem)
+        else:
+            body.append(elem)
+
     for elem in tmpl_doc.element.body:
         if elem.tag == qn("w:sectPr"):
             continue
-        cloned = copy.deepcopy(elem)
-        if insert_before is not None:
-            body.insert(list(body).index(insert_before), cloned)
-        else:
-            body.append(cloned)
+        _insert(copy.deepcopy(elem))
+
+    # Guarantee a page break between the title page and the report body.
+    _insert(_make_page_break_paragraph())
+
+
+def _make_page_break_paragraph():
+    """Return a ``w:p`` element containing a ``w:lastRenderedPageBreak``-style
+    page break run (``w:br`` with ``w:type="page"``)."""
+    p_elem = OxmlElement("w:p")
+    r_elem = OxmlElement("w:r")
+    br = OxmlElement("w:br")
+    br.set(qn("w:type"), "page")
+    r_elem.append(br)
+    p_elem.append(r_elem)
+    return p_elem
