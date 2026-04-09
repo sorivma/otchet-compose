@@ -13,6 +13,9 @@ dependencies = [
     "PyYAML>=6.0.1",
 ]
 
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
 [project.scripts]
 otchet-compose = "otchet_compose.cli:main"
 
