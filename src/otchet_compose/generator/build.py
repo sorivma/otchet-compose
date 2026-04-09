@@ -15,6 +15,7 @@ from .blocks import REGISTRY, RenderContext
 from .fields import OxmlHelper
 from .page import PageSetup
 from .styles import setup_styles
+from .title_page import render_title_page
 
 
 def _remove_initial_empty_paragraph(doc) -> None:
@@ -63,7 +64,10 @@ def generate_document(config: dict) -> None:
 
     ctx = RenderContext()
 
-    if document_cfg.get("reserve_title_page", False):
+    title_page_cfg = document_cfg.get("title_page")
+    if title_page_cfg:
+        render_title_page(doc, title_page_cfg["template"], title_page_cfg["params"])
+    elif document_cfg.get("reserve_title_page", False):
         doc.add_paragraph("")
         doc.add_page_break()
 

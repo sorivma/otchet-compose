@@ -2,8 +2,20 @@ version: 1
 
 document:
   output: "./build/lab-04.docx"
-  reserve_title_page: true
   toc: true
+  title_page:
+    template: mirea
+    params:
+      institute: "Институт информационных технологий"
+      department: "Кафедра общей информатики"
+      discipline: "Операционные системы"
+      work_type: "ОТЧЁТ ПО ЛАБОРАТОРНОЙ РАБОТЕ"
+      work_number: "№ 4"
+      work_title: "Многомашинный стенд на базе Vagrant"
+      student: "Иванов И.И."
+      group: "ИКБО-01-22"
+      teacher: "Петров П.П."
+      year: "2025"
 
 content:
   - type: heading
