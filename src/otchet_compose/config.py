@@ -1,13 +1,30 @@
+"""YAML configuration loader and validator.
+
+Reads an ``otchet-compose.yml`` file, validates its structure, and returns
+a normalised plain :class:`dict` that the generator can consume without
+any further YAML awareness.  All relative file paths are resolved to
+absolute paths relative to the config file's parent directory.
+"""
+
 from pathlib import Path
 import yaml
 
+from .generator.blocks import REGISTRY
+
 
 SUPPORTED_VERSION = 1
-SUPPORTED_BLOCK_TYPES = {"heading", "paragraph", "figure"}
-SUPPORTED_HEADING_LEVELS = {1, 2, 3}
 
 
 def load_config(config_path: Path) -> dict:
+    """Load and validate a YAML config file, returning a normalised dict.
+
+    The returned dict always contains the keys ``version``, ``document``,
+    and ``content``.  All file paths inside the dict are absolute strings.
+
+    Raises:
+        FileNotFoundError: if *config_path* does not exist.
+        ValueError: if the YAML structure violates the schema.
+    """
     config_path = config_path.resolve()
 
     if not config_path.exists():
@@ -38,6 +55,7 @@ def load_config(config_path: Path) -> dict:
 
 
 def _validate_document(document: object, base_dir: Path) -> dict:
+    """Validate the ``document`` section and return a normalised dict."""
     if not isinstance(document, dict):
         raise ValueError("Секция document обязательна и должна быть объектом")
 
@@ -63,108 +81,30 @@ def _validate_document(document: object, base_dir: Path) -> dict:
 
 
 def _validate_content(content: object, base_dir: Path) -> list[dict]:
+    """Validate the ``content`` list and return a list of normalised block dicts."""
     if not isinstance(content, list) or not content:
         raise ValueError("content обязателен и должен быть непустым списком")
 
-    normalized_blocks = []
-
-    for index, block in enumerate(content, start=1):
-        normalized_blocks.append(_validate_block(block, index, base_dir))
-
-    return normalized_blocks
+    return [_validate_block(block, index, base_dir) for index, block in enumerate(content, start=1)]
 
 
 def _validate_block(block: object, index: int, base_dir: Path) -> dict:
+    """Dispatch a single raw block to the appropriate handler's ``validate``."""
     if not isinstance(block, dict):
         raise ValueError(f"Блок content[{index}] должен быть объектом")
 
     block_type = block.get("type")
-    if block_type not in SUPPORTED_BLOCK_TYPES:
+    if block_type not in REGISTRY:
         raise ValueError(
             f"Блок content[{index}] имеет неподдерживаемый type: {block_type!r}. "
-            f"Допустимо: {', '.join(sorted(SUPPORTED_BLOCK_TYPES))}"
+            f"Допустимо: {', '.join(sorted(REGISTRY))}"
         )
 
-    if block_type == "heading":
-        return _validate_heading(block, index)
-
-    if block_type == "paragraph":
-        return _validate_paragraph(block, index)
-
-    if block_type == "figure":
-        return _validate_figure(block, index, base_dir)
-
-    raise ValueError(f"Неизвестный тип блока в content[{index}]: {block_type!r}")
-
-
-def _validate_heading(block: dict, index: int) -> dict:
-    text = block.get("text")
-    level = block.get("level")
-    structural = block.get("structural")
-
-    if not isinstance(text, str) or not text.strip():
-        raise ValueError(
-            f"content[{index}]: heading.text обязателен и должен быть строкой"
-        )
-
-    if level not in SUPPORTED_HEADING_LEVELS:
-        raise ValueError(
-            f"content[{index}]: heading.level должен быть одним из "
-            f"{sorted(SUPPORTED_HEADING_LEVELS)}"
-        )
-
-    if not isinstance(structural, bool):
-        raise ValueError(
-            f"content[{index}]: heading.structural должен быть true/false"
-        )
-
-    return {
-        "type": "heading",
-        "text": text.strip(),
-        "level": level,
-        "structural": structural,
-    }
-
-
-def _validate_paragraph(block: dict, index: int) -> dict:
-    text = block.get("text")
-
-    if not isinstance(text, str) or not text.strip():
-        raise ValueError(
-            f"content[{index}]: paragraph.text обязателен и должен быть строкой"
-        )
-
-    return {
-        "type": "paragraph",
-        "text": text.strip(),
-    }
-
-
-def _validate_figure(block: dict, index: int, base_dir: Path) -> dict:
-    caption = block.get("caption")
-    path = block.get("path")
-
-    if not isinstance(caption, str) or not caption.strip():
-        raise ValueError(
-            f"content[{index}]: figure.caption обязателен и должен быть строкой"
-        )
-
-    normalized_path = None
-    if path is not None:
-        if not isinstance(path, str) or not path.strip():
-            raise ValueError(
-                f"content[{index}]: figure.path должен быть непустой строкой, если указан"
-            )
-        normalized_path = str(_resolve_path(base_dir, path))
-
-    return {
-        "type": "figure",
-        "caption": caption.strip(),
-        "path": normalized_path,
-    }
+    return REGISTRY[block_type].validate(block, index, base_dir)
 
 
 def _resolve_path(base_dir: Path, raw_path: str) -> Path:
+    """Resolve *raw_path* relative to *base_dir*; absolute paths are kept as-is."""
     path = Path(raw_path)
     if path.is_absolute():
         return path.resolve()
