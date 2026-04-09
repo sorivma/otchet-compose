@@ -4,7 +4,7 @@ document:
   output: "./build/lab-04.docx"
   toc: true
   title_page:
-    template: mirea
+    template: rut
     params:
       institute: "Институт информационных технологий"
       department: "Кафедра общей информатики"
