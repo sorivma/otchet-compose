@@ -78,14 +78,15 @@ class TestFigureRender:
         block = {"type": "figure", "caption": "Схема стенда", "path": None}
         ctx = RenderContext()
         handler.render(doc, block, ctx)
-        caption_para = doc.paragraphs[-1]
+        caption_para = doc.tables[-1].rows[1].cells[0].paragraphs[0]
         assert caption_para.text == "Рисунок 1 – Схема стенда"
 
     def test_caption_strips_trailing_period(self, handler, doc):
         block = {"type": "figure", "caption": "Схема.", "path": None}
         ctx = RenderContext()
         handler.render(doc, block, ctx)
-        assert doc.paragraphs[-1].text == "Рисунок 1 – Схема"
+        caption_para = doc.tables[-1].rows[1].cells[0].paragraphs[0]
+        assert caption_para.text == "Рисунок 1 – Схема"
 
     def test_placeholder_inserted_when_no_path(self, handler, doc):
         block = {"type": "figure", "caption": "cap", "path": None}
