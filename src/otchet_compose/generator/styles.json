@@ -112,7 +112,8 @@
       "space_before": "6pt",
       "space_after": "6pt",
       "line_spacing": 1.0,
-      "line_spacing_rule": "single"
+      "line_spacing_rule": "single",
+      "keep_together": true
     }
   },
   {
@@ -154,7 +155,8 @@
       "space_before": "6pt",
       "space_after": "3pt",
       "line_spacing": 1.0,
-      "line_spacing_rule": "single"
+      "line_spacing_rule": "single",
+      "keep_with_next": true
     }
   },
   {

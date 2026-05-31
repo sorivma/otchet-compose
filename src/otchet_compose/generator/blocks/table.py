@@ -146,7 +146,8 @@ class TableHandler:
 def _add_caption(doc, table_number: int, text: str) -> None:
     """Append a ``GOST Table Caption`` paragraph formatted as "Таблица N – text"."""
     caption_text = f"Таблица {table_number} – {text.strip().rstrip('.')}"
-    doc.add_paragraph(caption_text, style="GOST Table Caption")
+    para = doc.add_paragraph(caption_text, style="GOST Table Caption")
+    para.paragraph_format.keep_with_next = True
 
 
 def _set_table_borders(table) -> None:

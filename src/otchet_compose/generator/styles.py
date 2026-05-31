@@ -155,6 +155,8 @@ def _apply_spec(doc, spec: dict) -> None:
     pf.line_spacing_rule = para["line_spacing_rule"]
     if "keep_with_next" in para:
         pf.keep_with_next = para["keep_with_next"]
+    if "keep_together" in para:
+        pf.keep_together = para["keep_together"]
 
     if "outline_level" in spec:
         _set_outline_level(style, spec["outline_level"])

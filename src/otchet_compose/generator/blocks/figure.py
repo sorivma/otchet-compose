@@ -2,9 +2,8 @@
 
 Validates ``type: figure`` blocks and renders them as either an embedded
 image (when ``path`` points to an existing file) or a bordered placeholder
-table.  Each rendered figure increments
-:attr:`~otchet_compose.generator.blocks._base.RenderContext.figure_counter`
-so captions are numbered consecutively across the document.
+inside a two-row table together with the caption so the block does not
+split across pages.
 """
 
 from pathlib import Path
@@ -46,50 +45,83 @@ class FigureHandler:
         }
 
     def render(self, doc, block: dict, ctx: RenderContext) -> None:
-        """Append a figure (image or placeholder) and its numbered caption."""
+        """Append a figure and caption as one non-breaking block."""
         ctx.figure_counter += 1
         image_path = block.get("path")
+        caption_text = _caption_text(ctx.figure_counter, block["caption"])
 
+        table = doc.add_table(rows=2, cols=1)
+        table.autofit = False
+        _clear_table_borders(table)
+
+        image_cell = table.cell(0, 0)
+        caption_cell = table.cell(1, 0)
+        image_cell.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+        caption_cell.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+
+        image_row = table.rows[0]
         if image_path and Path(image_path).exists():
-            paragraph = doc.add_paragraph()
-            paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            paragraph.add_run().add_picture(image_path, width=Cm(16))
+            image_para = image_cell.paragraphs[0]
+            image_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            image_para.add_run().add_picture(image_path, width=Cm(16))
         else:
-            _add_placeholder(doc)
+            image_row.height = Cm(7)
+            image_row.height_rule = WD_ROW_HEIGHT_RULE.AT_LEAST
+            _set_cell_borders(image_cell)
+            image_para = image_cell.paragraphs[0]
+            image_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            image_para.style = "GOST Figure Placeholder"
+            image_para.add_run("Изображение отсутствует")
 
-        _add_caption(doc, ctx.figure_counter, block["caption"])
+        caption_para = caption_cell.paragraphs[0]
+        caption_para.style = "GOST Caption"
+        caption_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        caption_para.add_run(caption_text)
+
+        _set_row_cant_split(image_row)
+        _set_row_cant_split(table.rows[1])
         ctx.current_page_has_content = True
 
 
-def _add_placeholder(doc) -> None:
-    """Insert a 12 × 7 cm bordered table as a figure placeholder."""
-    table = doc.add_table(rows=1, cols=1)
-    table.autofit = False
-    _set_table_borders(table)
-
-    cell = table.cell(0, 0)
-    cell.width = Cm(12)
-    cell.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
-
-    row = table.rows[0]
-    row.height = Cm(7)
-    row.height_rule = WD_ROW_HEIGHT_RULE.EXACTLY
-
-    paragraph = cell.paragraphs[0]
-    paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    paragraph.style = "GOST Figure Placeholder"
-    paragraph.add_run("Изображение отсутствует")
+def _caption_text(figure_number: int, text: str) -> str:
+    return f"Рисунок {figure_number} – {text.strip().rstrip('.')}"
 
 
-def _set_table_borders(table) -> None:
-    """Apply a thin black single-line border to all six sides of *table*."""
+def _set_row_cant_split(row) -> None:
+    tr_pr = row._tr.get_or_add_trPr()
+    cant_split = OxmlElement("w:cantSplit")
+    tr_pr.append(cant_split)
+
+
+def _clear_table_borders(table) -> None:
     tbl = table._tbl
     tbl_pr = tbl.tblPr
+    if tbl_pr is None:
+        tbl_pr = OxmlElement("w:tblPr")
+        tbl.insert(0, tbl_pr)
     borders = tbl_pr.find(qn("w:tblBorders"))
     if borders is None:
         borders = OxmlElement("w:tblBorders")
         tbl_pr.append(borders)
     for border_name in ("top", "left", "bottom", "right", "insideH", "insideV"):
+        border = borders.find(qn(f"w:{border_name}"))
+        if border is None:
+            border = OxmlElement(f"w:{border_name}")
+            borders.append(border)
+        border.set(qn("w:val"), "none")
+        border.set(qn("w:sz"), "0")
+        border.set(qn("w:space"), "0")
+        border.set(qn("w:color"), "auto")
+
+
+def _set_cell_borders(cell) -> None:
+    tc = cell._tc
+    tc_pr = tc.get_or_add_tcPr()
+    borders = tc_pr.find(qn("w:tcBorders"))
+    if borders is None:
+        borders = OxmlElement("w:tcBorders")
+        tc_pr.append(borders)
+    for border_name in ("top", "left", "bottom", "right"):
         border = borders.find(qn(f"w:{border_name}"))
         if border is None:
             border = OxmlElement(f"w:{border_name}")
@@ -100,14 +132,7 @@ def _set_table_borders(table) -> None:
         border.set(qn("w:color"), "000000")
 
 
-def _add_caption(doc, figure_number: int, text: str) -> None:
-    """Append a ``GOST Caption`` paragraph formatted as "Рисунок N – text"."""
-    caption_text = f"Рисунок {figure_number} – {text.strip().rstrip('.')}"
-    doc.add_paragraph(caption_text, style="GOST Caption")
-
-
 def _resolve_path(base_dir: Path, raw_path: str) -> Path:
-    """Resolve *raw_path* relative to *base_dir*; absolute paths are kept as-is."""
     path = Path(raw_path)
     if path.is_absolute():
         return path.resolve()
