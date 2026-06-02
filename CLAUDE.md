@@ -102,7 +102,8 @@ content:
     path: "./images/foo.png"                   # optional; omit for placeholder
 
   - type: list
-    style: bullet    # bullet (–) or numeric (1), 2), …)
+    style: bullet    # bullet (–) or numeric (1), 2), … by default)
+    # marker: "%1."   # optional Word lvlText marker override, e.g. 1., 2., …
     items:
       - "First item"
       - "Second item"

@@ -28,12 +28,18 @@ class TestListValidate:
     def test_valid_bullet(self, handler):
         block = {"type": "list", "style": "bullet", "items": ["A", "B"]}
         result = handler.validate(block, 1, BASE_DIR)
-        assert result == {"type": "list", "style": "bullet", "items": ["A", "B"]}
+        assert result == {"type": "list", "style": "bullet", "marker": "–", "items": ["A", "B"]}
 
     def test_valid_numeric(self, handler):
         block = {"type": "list", "style": "numeric", "items": ["Step 1", "Step 2"]}
         result = handler.validate(block, 1, BASE_DIR)
         assert result["style"] == "numeric"
+        assert result["marker"] == "%1)"
+
+    def test_custom_marker(self, handler):
+        block = {"type": "list", "style": "numeric", "marker": "%1.", "items": ["Step 1"]}
+        result = handler.validate(block, 1, BASE_DIR)
+        assert result["marker"] == "%1."
 
     def test_items_are_stripped(self, handler):
         block = {"type": "list", "style": "bullet", "items": ["  item  "]}
@@ -70,6 +76,11 @@ class TestListValidate:
         with pytest.raises(ValueError, match=r"items\[2\]"):
             handler.validate(block, 1, BASE_DIR)
 
+    def test_empty_marker_raises(self, handler):
+        block = {"type": "list", "style": "numeric", "marker": "  ", "items": ["ok"]}
+        with pytest.raises(ValueError, match="marker"):
+            handler.validate(block, 1, BASE_DIR)
+
 
 class TestListRender:
     def test_renders_correct_number_of_paragraphs(self, handler, doc):
@@ -87,7 +98,7 @@ class TestListRender:
         assert texts == ["First", "Second"]
 
     def test_paragraph_style(self, handler, doc):
-        block = {"type": "list", "style": "numeric", "items": ["Item"]}
+        block = {"type": "list", "style": "numeric", "marker": "%1)", "items": ["Item"]}
         ctx = RenderContext()
         handler.render(doc, block, ctx)
         assert doc.paragraphs[-1].style.name == "GOST List"
@@ -97,3 +108,10 @@ class TestListRender:
         ctx = RenderContext(current_page_has_content=False)
         handler.render(doc, block, ctx)
         assert ctx.current_page_has_content is True
+
+    def test_custom_numeric_marker_is_written_to_numbering(self, handler, doc):
+        block = {"type": "list", "style": "numeric", "marker": "%1.", "items": ["Item"]}
+        ctx = RenderContext()
+        handler.render(doc, block, ctx)
+        numbering_xml = doc.part.numbering_part._element.xml
+        assert 'w:val="%1."' in numbering_xml
