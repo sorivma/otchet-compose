@@ -86,6 +86,7 @@ content:
 
   - type: list
     style: numeric
+    marker: "%1."
     items:
       - "Запустить все машины командой vagrant up"
       - "Убедиться в доступности db-узла изнутри back-машины"

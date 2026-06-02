@@ -64,7 +64,8 @@ content:
     path: "./images/foo.png"      # path можно не указывать — будет placeholder
 
   - type: list
-    style: bullet    # bullet — маркированный (–), numeric — нумерованный (1), 2), …)
+    style: bullet    # bullet — маркированный (–), numeric — нумерованный (по умолчанию 1), 2), …)
+    # marker: "%1."   # опционально: формат маркера Word lvlText, например 1., 2., …
     items:
       - "Первый элемент"
       - "Второй элемент"
