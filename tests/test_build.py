@@ -2,8 +2,6 @@
 
 from pathlib import Path
 
-import pytest
-
 from otchet_compose.generator.build import generate_document
 
 

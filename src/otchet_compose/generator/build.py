@@ -7,6 +7,8 @@ contains no block-specific logic.
 """
 
 from pathlib import Path
+import os
+import tempfile
 
 from docx import Document
 from docx.shared import Cm
@@ -51,7 +53,12 @@ def _add_toc(doc) -> None:
     )
 
 
-def generate_document(config: dict) -> None:
+def generate_document(
+    config: dict,
+    *,
+    quiet: bool = False,
+    warnings: list[str] | None = None,
+) -> Path:
     """Generate a DOCX report from a validated config dict.
 
     The *config* dict is the value returned by
@@ -73,7 +80,12 @@ def generate_document(config: dict) -> None:
 
     title_page_cfg = document_cfg.get("title_page")
     if title_page_cfg:
-        render_title_page(doc, title_page_cfg["template"], title_page_cfg["params"])
+        render_title_page(
+            doc,
+            title_page_cfg["template"],
+            title_page_cfg["params"],
+            warnings.append if warnings is not None else None,
+        )
     elif document_cfg.get("reserve_title_page", False):
         doc.add_paragraph("")
         doc.add_page_break()
@@ -90,6 +102,24 @@ def generate_document(config: dict) -> None:
 
     output_path = Path(document_cfg["output"])
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    doc.save(str(output_path))
+    temp_path = _temporary_output_path(output_path)
+    try:
+        doc.save(str(temp_path))
+        os.replace(temp_path, output_path)
+    finally:
+        temp_path.unlink(missing_ok=True)
 
-    print(f"Отчёт сохранён: {output_path}")
+    if not quiet:
+        print(f"Отчёт сохранён: {output_path}")
+    return output_path
+
+
+def _temporary_output_path(output_path: Path) -> Path:
+    handle = tempfile.NamedTemporaryFile(
+        prefix=f".{output_path.stem}-",
+        suffix=output_path.suffix,
+        dir=output_path.parent,
+        delete=False,
+    )
+    handle.close()
+    return Path(handle.name)

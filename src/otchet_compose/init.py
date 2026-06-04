@@ -5,8 +5,11 @@ that is ready to use with ``otchet-compose gen``.
 """
 
 from datetime import date
+import os
 from pathlib import Path
+import tempfile
 
+import yaml
 from .generator.title_page import list_available_templates, _collect_placeholders, BUNDLED_TEMPLATES_DIR, _USER_TEMPLATES_DIR
 from docx import Document as _DocxDocument
 
@@ -60,6 +63,8 @@ content:
       Подведите итоги работы.
 """
 
+_STARTER_BLOCKS = yaml.safe_load(_STARTER_CONTENT)["content"]
+
 
 def init_command(args) -> int:
     """Execute the ``init`` subcommand."""
@@ -107,6 +112,43 @@ def init_command(args) -> int:
     print(f"\nКонфигурация сохранена: {config_path}")
     print(f"Запустите генерацию: otchet-compose gen -f {config_path}")
     return 0
+
+
+def create_config(
+    config_path: str | Path,
+    *,
+    document_output: str = "./build/report.docx",
+    toc: bool = True,
+    template: str | None = None,
+    params: dict[str, str] | None = None,
+    reserve_title_page: bool = False,
+    force: bool = False,
+) -> Path:
+    """Create a starter config non-interactively and atomically."""
+    path = Path(config_path).resolve()
+    if path.exists() and not force:
+        raise FileExistsError(f"Config already exists; use --force to overwrite: {path}")
+    if template and template not in list_available_templates():
+        available = ", ".join(list_available_templates())
+        raise ValueError(f"Unknown title page template: {template}. Available templates: {available}")
+
+    document: dict[str, object] = {"output": document_output, "toc": toc}
+    if template:
+        document["title_page"] = {"template": template, "params": params or {}}
+    else:
+        document["reserve_title_page"] = reserve_title_page
+    payload = {"version": 1, "document": document, "content": _STARTER_BLOCKS}
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    handle = tempfile.NamedTemporaryFile(prefix=f".{path.stem}-", suffix=path.suffix, dir=path.parent, delete=False)
+    handle.close()
+    temp = Path(handle.name)
+    try:
+        temp.write_text(yaml.safe_dump(payload, allow_unicode=True, sort_keys=False), encoding="utf-8")
+        os.replace(temp, path)
+    finally:
+        temp.unlink(missing_ok=True)
+    return path
 
 
 # ---------------------------------------------------------------------------

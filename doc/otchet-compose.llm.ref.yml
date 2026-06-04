@@ -13,7 +13,7 @@
 # ВАЖНО ДЛЯ LLM:
 # 0. Титульный лист задаётся через document.title_page, а не через content.
 #    Если title_page указан, reserve_title_page не нужен.
-#    Доступные встроенные шаблоны: mirea
+#    Доступные встроенные шаблоны: rut, mock
 #    Пользователь может добавить собственный .docx шаблон в ~/.otchet-compose/templates/.
 #    Параметры шаблона передаются через title_page.params (ключ: значение).
 #    В .docx шаблонах плейсхолдеры записываются как {{key}}.
@@ -67,10 +67,10 @@ document:
 
   # Титульный лист из шаблона (опционально).
   # При наличии title_page поле reserve_title_page не нужно.
-  # Встроенные шаблоны: mirea
+  # Встроенные шаблоны: rut, mock
   # Свои шаблоны (.docx с плейсхолдерами {{key}}) кладут в ~/.otchet-compose/templates/
   title_page:
-    template: mirea
+    template: mock
     params:
       institute: "Институт информационных технологий"
       department: "Кафедра общей информатики"

@@ -27,7 +27,9 @@ Word styles and avoid embedded images.
 
 import copy
 import re
+import sys
 from pathlib import Path
+from typing import Callable
 
 from docx import Document
 from docx.oxml import OxmlElement
@@ -39,7 +41,12 @@ _USER_TEMPLATES_DIR = Path.home() / ".otchet-compose" / "templates"
 _PLACEHOLDER_RE = re.compile(r"\{\{([^}]+)\}\}")
 
 
-def render_title_page(doc, name: str, params: dict) -> None:
+def render_title_page(
+    doc,
+    name: str,
+    params: dict,
+    warn: Callable[[str], None] | None = None,
+) -> None:
     """Render the named title page template as the first content of *doc*.
 
     Emits warnings to stderr when:
@@ -58,7 +65,7 @@ def render_title_page(doc, name: str, params: dict) -> None:
     """
     path = _locate_template(name)
     tmpl = Document(str(path))
-    _warn_param_mismatches(tmpl, params, name)
+    _warn_param_mismatches(tmpl, params, name, warn)
     _substitute_all(tmpl, params)
     _prepend_body(doc, tmpl)
 
@@ -69,6 +76,21 @@ def list_available_templates() -> list[str]:
     if _USER_TEMPLATES_DIR.exists():
         names.update(p.stem for p in _USER_TEMPLATES_DIR.glob("*.docx"))
     return sorted(names)
+
+
+def describe_templates() -> list[dict[str, object]]:
+    """Return machine-readable metadata for all available templates."""
+    descriptions = []
+    for name in list_available_templates():
+        path = _locate_template(name)
+        descriptions.append(
+            {
+                "name": name,
+                "placeholders": sorted(_collect_placeholders(Document(str(path)))),
+                "source": "user" if path.parent == _USER_TEMPLATES_DIR else "bundled",
+            }
+        )
+    return descriptions
 
 
 # ---------------------------------------------------------------------------
@@ -113,25 +135,29 @@ def _collect_placeholders(tmpl_doc) -> set[str]:
     return keys
 
 
-def _warn_param_mismatches(tmpl_doc, params: dict, name: str) -> None:
+def _warn_param_mismatches(
+    tmpl_doc,
+    params: dict,
+    name: str,
+    warn: Callable[[str], None] | None = None,
+) -> None:
     """Print warnings for unused params and unfilled placeholders."""
+    warn = warn or (lambda message: print(message, file=sys.stderr, flush=True))
     placeholders = _collect_placeholders(tmpl_doc)
     param_keys = set(params.keys())
 
     unused = param_keys - placeholders
     for key in sorted(unused):
-        print(
+        warn(
             f"Предупреждение: параметр '{key}' передан в шаблон '{name}', "
-            f"но плейсхолдер {{{{key}}}} в шаблоне не найден.",
-            flush=True,
+            f"но плейсхолдер {{{{key}}}} в шаблоне не найден."
         )
 
     unfilled = placeholders - param_keys
     for key in sorted(unfilled):
-        print(
+        warn(
             f"Предупреждение: плейсхолдер '{{{{{key}}}}}' найден в шаблоне '{name}', "
-            f"но значение для него не задано в title_page.params.",
-            flush=True,
+            f"но значение для него не задано в title_page.params."
         )
 
 
