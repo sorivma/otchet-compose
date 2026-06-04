@@ -9,6 +9,7 @@ from pathlib import Path
 
 from .config import load_config
 from .generator import generate_document
+from .init import init_command
 
 
 def gen_command(args) -> int:
@@ -42,6 +43,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="Путь к YAML-конфигурации (по умолчанию: otchet-compose.yml)",
     )
     gen_parser.set_defaults(func=gen_command)
+
+    init_parser = subparsers.add_parser("init", help="Создать стартовую конфигурацию")
+    init_parser.set_defaults(func=init_command)
 
     return parser
 

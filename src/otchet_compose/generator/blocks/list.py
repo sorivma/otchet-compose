@@ -13,7 +13,8 @@ GOST indentation:
 
 Supported styles:
     bullet  — em-dash bullet (``–``), GOST-recommended marker character.
-    numeric — decimal numbering with ``1)``, ``2)`` … format.
+    numeric — decimal numbering with ``1)``, ``2)`` … format by default.
+    marker  — optional Word ``lvlText`` override, for example ``%1.``.
 """
 
 from pathlib import Path
@@ -50,6 +51,7 @@ class ListHandler:
                 or if ``items`` is missing, empty, or contains non-strings.
         """
         style = block.get("style")
+        marker = block.get("marker")
         items = block.get("items")
 
         if style not in ("bullet", "numeric"):
@@ -63,6 +65,11 @@ class ListHandler:
                 f"content[{index}]: list.items обязателен и должен быть непустым списком"
             )
 
+        if marker is not None and (not isinstance(marker, str) or not marker.strip()):
+            raise ValueError(
+                f"content[{index}]: list.marker должен быть непустой строкой, если указан"
+            )
+
         for i, item in enumerate(items, start=1):
             if not isinstance(item, str) or not item.strip():
                 raise ValueError(
@@ -72,6 +79,7 @@ class ListHandler:
         return {
             "type": "list",
             "style": style,
+            "marker": marker.strip() if isinstance(marker, str) else _LEVEL_TEXT[style],
             "items": [item.strip() for item in items],
         }
 
@@ -82,7 +90,8 @@ class ListHandler:
         block; all items share the same ``numId`` so Word numbers them as one
         continuous list.
         """
-        num_id = _add_list_definition(doc, block["style"])
+        marker = block.get("marker", _LEVEL_TEXT[block["style"]])
+        num_id = _add_list_definition(doc, block["style"], marker)
         for item in block["items"]:
             paragraph = doc.add_paragraph(item, style="GOST List")
             _apply_num_pr(paragraph, num_id)
@@ -105,7 +114,7 @@ def _ensure_numbering_element(doc):
         return numbering_part._element
 
 
-def _add_list_definition(doc, style: str) -> int:
+def _add_list_definition(doc, style: str, marker: str) -> int:
     """Add an ``abstractNum`` + ``num`` pair for *style* and return the ``numId``.
 
     Each call adds a fresh definition so independent list blocks restart their
@@ -118,7 +127,7 @@ def _add_list_definition(doc, style: str) -> int:
     existing_abstract = numbering.findall(qn("w:abstractNum"))
     abstract_num_id = len(existing_abstract)
 
-    abstract_num = _build_abstract_num(abstract_num_id, style)
+    abstract_num = _build_abstract_num(abstract_num_id, style, marker)
 
     # abstractNum elements must appear before num elements
     first_num = numbering.find(qn("w:num"))
@@ -141,7 +150,7 @@ def _add_list_definition(doc, style: str) -> int:
     return num_id
 
 
-def _build_abstract_num(abstract_num_id: int, style: str):
+def _build_abstract_num(abstract_num_id: int, style: str, marker: str):
     """Build and return a ``w:abstractNum`` element for *style* at level 0."""
     abstract_num = OxmlElement("w:abstractNum")
     abstract_num.set(qn("w:abstractNumId"), str(abstract_num_id))
@@ -162,7 +171,7 @@ def _build_abstract_num(abstract_num_id: int, style: str):
     lvl.append(num_fmt)
 
     lvl_text = OxmlElement("w:lvlText")
-    lvl_text.set(qn("w:val"), _LEVEL_TEXT[style])
+    lvl_text.set(qn("w:val"), marker)
     lvl.append(lvl_text)
 
     lvl_jc = OxmlElement("w:lvlJc")

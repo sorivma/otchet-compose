@@ -11,10 +11,14 @@ from pathlib import Path
 from docx import Document
 from docx.shared import Cm
 
+from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
+
 from .blocks import REGISTRY, RenderContext
 from .fields import OxmlHelper
 from .page import PageSetup
 from .styles import setup_styles
+from .title_page import render_title_page
 
 
 def _remove_initial_empty_paragraph(doc) -> None:
@@ -24,13 +28,16 @@ def _remove_initial_empty_paragraph(doc) -> None:
         paragraph.getparent().remove(paragraph)
 
 
-def _add_toc(doc) -> None:
-    """Insert a Word TOC field preceded by a "СОДЕРЖАНИЕ" title paragraph.
+def _enable_update_fields_on_open(doc) -> None:
+    """Ask Word to refresh fields (including TOC) when the document is opened."""
+    settings_el = doc.settings.element
+    update_fields = OxmlElement("w:updateFields")
+    update_fields.set(qn("w:val"), "true")
+    settings_el.append(update_fields)
 
-    The field uses ``\\o "1-3" \\h \\z \\u`` switches (levels 1–3, hyperlinks,
-    hide tab leaders, use applied paragraph outline levels).  The placeholder
-    text reminds users to update fields in Word before printing.
-    """
+
+def _add_toc(doc) -> None:
+    """Insert a Word TOC field preceded by a "СОДЕРЖАНИЕ" title paragraph."""
     doc.add_paragraph("СОДЕРЖАНИЕ", style="GOST TOC Title")
 
     paragraph = doc.add_paragraph(style="GOST Service")
@@ -39,8 +46,8 @@ def _add_toc(doc) -> None:
     OxmlHelper.add_field_run(
         paragraph,
         r' TOC \o "1-3" \h \z \u ',
-        "Оглавление будет сформировано после ручного обновления полей в Microsoft Word.",
-        dirty=False,
+        "",
+        dirty=True,
     )
 
 
@@ -57,13 +64,17 @@ def generate_document(config: dict) -> None:
 
     doc = Document()
 
-    PageSetup.apply(doc, hide_first_page_number=document_cfg.get("reserve_title_page", False))
+    hide_first = bool(document_cfg.get("title_page") or document_cfg.get("reserve_title_page", False))
+    PageSetup.apply(doc, hide_first_page_number=hide_first)
     setup_styles(doc)
     _remove_initial_empty_paragraph(doc)
 
     ctx = RenderContext()
 
-    if document_cfg.get("reserve_title_page", False):
+    title_page_cfg = document_cfg.get("title_page")
+    if title_page_cfg:
+        render_title_page(doc, title_page_cfg["template"], title_page_cfg["params"])
+    elif document_cfg.get("reserve_title_page", False):
         doc.add_paragraph("")
         doc.add_page_break()
 
@@ -75,6 +86,7 @@ def generate_document(config: dict) -> None:
         REGISTRY[block["type"]].render(doc, block, ctx)
 
     PageSetup.add_page_number(doc.sections[0])
+    _enable_update_fields_on_open(doc)
 
     output_path = Path(document_cfg["output"])
     output_path.parent.mkdir(parents=True, exist_ok=True)
