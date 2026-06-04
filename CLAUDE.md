@@ -12,6 +12,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 pip install -e .                                # install in dev mode
 otchet-compose gen -f path/to/config.yml        # generate a report
 otchet-compose gen                              # uses ./otchet-compose.yml by default
+otchet-compose validate -f path/to/config.yml   # validate without generating
+otchet-compose gen -f path/to/config.yml --json # stable machine-readable response
+otchet-compose inspect --json                   # discover blocks and templates
+otchet-compose schema --json                    # get bundled JSON Schema
 ```
 
 Output DOCX is written to the path specified in `document.output`; parent directories are created automatically.
@@ -20,7 +24,7 @@ Output DOCX is written to the path specified in `document.output`; parent direct
 
 ```
 src/otchet_compose/
-  cli.py               – argparse entry point, `gen` subcommand
+  cli.py               – argparse entry point, `gen`, `validate`, and `init` subcommands
   config.py            – YAML loading + validation (returns plain dict)
   generator/
     __init__.py        – re-exports generate_document

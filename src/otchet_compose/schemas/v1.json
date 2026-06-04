@@ -1,0 +1,117 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.otchet-compose.dev/config/v1.json",
+  "title": "otchet-compose configuration",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "document", "content"],
+  "properties": {
+    "version": {"const": 1},
+    "document": {"$ref": "#/$defs/document"},
+    "content": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "oneOf": [
+          {"$ref": "#/$defs/heading"},
+          {"$ref": "#/$defs/paragraph"},
+          {"$ref": "#/$defs/figure"},
+          {"$ref": "#/$defs/list"},
+          {"$ref": "#/$defs/table"}
+        ]
+      }
+    }
+  },
+  "$defs": {
+    "nonEmptyString": {"type": "string", "minLength": 1, "pattern": "\\S"},
+    "document": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["output", "toc"],
+      "properties": {
+        "output": {"$ref": "#/$defs/nonEmptyString"},
+        "toc": {"type": "boolean"},
+        "reserve_title_page": {"type": "boolean", "default": false},
+        "title_page": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["template"],
+          "properties": {
+            "template": {"$ref": "#/$defs/nonEmptyString"},
+            "params": {
+              "type": "object",
+              "default": {},
+              "additionalProperties": {
+                "type": ["string", "number", "integer", "boolean", "null"]
+              }
+            }
+          }
+        }
+      }
+    },
+    "heading": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "text", "level", "structural"],
+      "properties": {
+        "type": {"const": "heading"},
+        "text": {"$ref": "#/$defs/nonEmptyString"},
+        "level": {"type": "integer", "enum": [1, 2, 3]},
+        "structural": {"type": "boolean"}
+      }
+    },
+    "paragraph": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "text"],
+      "properties": {
+        "type": {"const": "paragraph"},
+        "text": {"$ref": "#/$defs/nonEmptyString"}
+      }
+    },
+    "figure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "caption"],
+      "properties": {
+        "type": {"const": "figure"},
+        "caption": {"$ref": "#/$defs/nonEmptyString"},
+        "path": {"$ref": "#/$defs/nonEmptyString"}
+      }
+    },
+    "list": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "style", "items"],
+      "properties": {
+        "type": {"const": "list"},
+        "style": {"enum": ["bullet", "numeric"]},
+        "marker": {"$ref": "#/$defs/nonEmptyString"},
+        "items": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/nonEmptyString"}
+        }
+      }
+    },
+    "table": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "caption", "headers", "rows"],
+      "properties": {
+        "type": {"const": "table"},
+        "caption": {"$ref": "#/$defs/nonEmptyString"},
+        "headers": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/nonEmptyString"}
+        },
+        "rows": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"type": "array"}
+        }
+      }
+    }
+  }
+}
