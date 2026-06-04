@@ -10,6 +10,8 @@ from pathlib import Path
 import yaml
 
 from .generator.blocks import REGISTRY
+from .generator.title_page import list_available_templates
+from .schemas import validate_instance
 
 
 SUPPORTED_VERSION = 1
@@ -35,6 +37,8 @@ def load_config(config_path: Path) -> dict:
 
     if not isinstance(raw, dict):
         raise ValueError("Корень YAML-конфигурации должен быть объектом")
+
+    validate_instance(raw, raw.get("version", SUPPORTED_VERSION))
 
     base_dir = config_path.parent
 
@@ -96,6 +100,9 @@ def _validate_title_page(title_page: object) -> dict | None:
         raise ValueError(
             "document.title_page.template обязателен и должен быть непустой строкой"
         )
+    if template.strip() not in list_available_templates():
+        available = ", ".join(list_available_templates()) or "нет"
+        raise ValueError(f"Неизвестный шаблон title_page: {template.strip()}. Доступные шаблоны: {available}")
 
     params = title_page.get("params", {})
     if not isinstance(params, dict):

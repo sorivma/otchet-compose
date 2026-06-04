@@ -260,6 +260,22 @@ class TestTitlePageValidation:
         with pytest.raises(ValueError, match="template"):
             load_config(path)
 
+    def test_unknown_template_raises(self, tmp_path):
+        yaml = """
+            version: 1
+            document:
+              output: "./build/report.docx"
+              toc: false
+              title_page:
+                template: missing-template
+            content:
+              - type: paragraph
+                text: "Hello"
+        """
+        path = write_config(tmp_path, yaml)
+        with pytest.raises(ValueError, match="Неизвестный шаблон"):
+            load_config(path)
+
     def test_non_dict_params_raises(self, tmp_path):
         yaml = """
             version: 1

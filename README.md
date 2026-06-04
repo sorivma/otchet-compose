@@ -21,9 +21,51 @@ pip install -e ".[dev]"   # + pytest для тестов
 ```bash
 otchet-compose gen -f path/to/config.yml   # указать файл явно
 otchet-compose gen                          # ищет ./otchet-compose.yml
+otchet-compose validate -f path/to/config.yml
 ```
 
 Результат сохраняется в путь, указанный в `document.output`; родительские директории создаются автоматически.
+
+### Машиночитаемый режим
+
+Команды `gen` и `validate` поддерживают `--json`. Успешный ответ выводится в `stdout`,
+ошибки — в `stderr`. Ошибки входных данных возвращают exit code `2`, непредвиденные
+внутренние ошибки — `1`.
+
+```bash
+otchet-compose validate -f path/to/config.yml --json
+otchet-compose gen -f path/to/config.yml --json
+otchet-compose inspect --json
+otchet-compose schema --json
+```
+
+Стабильная форма ответа содержит поля `status`, `command`, `outputs`, `warnings`,
+`errors` и `data`.
+
+`inspect` сообщает поддерживаемые типы блоков, доступные шаблоны титульных листов
+и их параметры. `schema` возвращает версионируемую JSON Schema, которая также
+используется командой `validate`.
+
+Агент может создать стартовый конфиг без интерактивных вопросов:
+
+```bash
+otchet-compose init --non-interactive -f report.yml --template rut \
+  --param student="Иванов И.И." --param group="ИКБО-01-22" --json
+```
+
+### Безопасная генерация
+
+CLI не перезаписывает существующий DOCX без явного `--force`. Для агентных запусков
+доступны `--dry-run` и ограничение директории записи через `--output-root`.
+
+```bash
+otchet-compose gen -f report.yml --dry-run --json
+otchet-compose gen -f report.yml --output-root ./build --force --json
+otchet-compose gen -f report.yml --manifest ./build/report.manifest.json --json
+```
+
+Итоговый DOCX записывается атомарно.
+Опциональный manifest содержит абсолютные пути, размеры и SHA-256 входов и выходов.
 
 ## Формат конфигурации
 

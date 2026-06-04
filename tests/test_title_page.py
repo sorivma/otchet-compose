@@ -1,6 +1,5 @@
 """Tests for generator/title_page.py."""
 
-import copy
 from pathlib import Path
 
 import pytest
@@ -168,24 +167,25 @@ class TestWarnParamMismatches:
         path = _make_template_docx(tmp_path, "{{name}}")
         doc = Document(str(path))
         _warn_param_mismatches(doc, {"name": "Alice", "extra": "unused"}, "test")
-        out = capsys.readouterr().out
-        assert "extra" in out
-        assert "name" not in out
+        err = capsys.readouterr().err
+        assert "extra" in err
+        assert "name" not in err
 
     def test_warns_unfilled_placeholder(self, tmp_path, capsys):
         path = _make_template_docx(tmp_path, "{{name}} {{group}}")
         doc = Document(str(path))
         _warn_param_mismatches(doc, {"name": "Alice"}, "test")
-        out = capsys.readouterr().out
-        assert "group" in out
-        assert "name" not in out
+        err = capsys.readouterr().err
+        assert "group" in err
+        assert "name" not in err
 
     def test_no_warnings_when_exact_match(self, tmp_path, capsys):
         path = _make_template_docx(tmp_path, "{{name}}")
         doc = Document(str(path))
         _warn_param_mismatches(doc, {"name": "Alice"}, "test")
-        out = capsys.readouterr().out
-        assert out == ""
+        captured = capsys.readouterr()
+        assert captured.out == ""
+        assert captured.err == ""
 
     def test_no_warnings_empty_template_and_params(self, tmp_path, capsys):
         path = _make_template_docx(tmp_path, "No placeholders")
@@ -341,4 +341,4 @@ class TestRenderTitlePage:
             "student": "С", "group": "Г", "teacher": "П", "year": "2025",
             "nonexistent_key": "warn me",
         })
-        assert "nonexistent_key" in capsys.readouterr().out
+        assert "nonexistent_key" in capsys.readouterr().err
