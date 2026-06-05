@@ -7,6 +7,7 @@ document generation to :func:`~otchet_compose.generator.generate_document`.
 import argparse
 import sys
 from pathlib import Path
+from uuid import uuid4
 
 import yaml
 
@@ -31,6 +32,10 @@ class MachineArgumentParser(argparse.ArgumentParser):
         super().error(message)
 
 
+class OutputWriteError(OSError):
+    """Raised when an output path cannot be written before generation starts."""
+
+
 def gen_command(args) -> int:
     """Execute the ``gen`` subcommand.
 
@@ -44,9 +49,9 @@ def gen_command(args) -> int:
     config = load_config(config_path)
     config_warnings = _config_warnings(config)
     planned_output = Path(config["document"]["output"])
-    _check_output(planned_output, args.output_root, args.force)
+    _check_output(planned_output, args.output_root, args.force, verify_write=not args.dry_run)
     if args.manifest:
-        _check_output(Path(args.manifest), args.output_root, args.force)
+        _check_output(Path(args.manifest), args.output_root, args.force, verify_write=not args.dry_run)
     if args.dry_run:
         if args.json:
             print_json(
@@ -161,7 +166,7 @@ def init_dispatch_command(args) -> int:
             raise ValueError(f"--param key must not be empty: {item}")
         params[key] = value
     path = Path(args.config or "otchet-compose.yml").resolve()
-    _check_output(path, args.output_root, args.force)
+    _check_output(path, args.output_root, args.force, verify_write=True)
     output = create_config(
         path,
         document_output=args.document_output,
@@ -198,7 +203,7 @@ def _add_write_safety_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--manifest", help="Записать SHA-256 manifest после успешной генерации")
 
 
-def _check_output(output: Path, output_root: str | None, force: bool) -> None:
+def _check_output(output: Path, output_root: str | None, force: bool, *, verify_write: bool = False) -> None:
     output = output.resolve()
     if output_root:
         root = Path(output_root).resolve()
@@ -206,6 +211,25 @@ def _check_output(output: Path, output_root: str | None, force: bool) -> None:
             raise ValueError(f"Output path is outside --output-root: {output}")
     if output.exists() and not force:
         raise FileExistsError(f"Output already exists; use --force to overwrite: {output}")
+    if verify_write:
+        _verify_output_writable(output)
+
+
+def _verify_output_writable(output: Path) -> None:
+    parent = output.parent
+    try:
+        parent.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        raise OutputWriteError(f"Cannot create output directory for {output}: {exc}") from exc
+
+    temp_path = parent / f".{output.name}.write-test-{uuid4().hex}.tmp"
+    try:
+        with temp_path.open("xb") as handle:
+            handle.write(b"")
+    except OSError as exc:
+        raise OutputWriteError(f"Cannot write output file {output}: {exc}") from exc
+    finally:
+        temp_path.unlink(missing_ok=True)
 
 
 def _config_warnings(config: dict) -> list[dict[str, str]]:
@@ -270,6 +294,12 @@ def main() -> int:
 
     try:
         return args.func(args)
+    except OutputWriteError as exc:
+        if getattr(args, "json", False):
+            print_json(error_payload(args.command, "output_write_failed", str(exc)), error=True)
+        else:
+            print(f"РћС€РёР±РєР°: {exc}", file=sys.stderr)
+        return 2
     except (FileNotFoundError, FileExistsError, ValueError, yaml.YAMLError) as exc:
         if getattr(args, "json", False):
             print_json(error_payload(args.command, "invalid_input", str(exc)), error=True)
