@@ -7,6 +7,7 @@ import sys
 
 import pytest
 
+import otchet_compose.cli
 from otchet_compose.cli import main
 from otchet_compose.config import load_config
 from tests.conftest import write_config
@@ -119,6 +120,25 @@ def test_gen_rejects_output_outside_root(tmp_path, monkeypatch, capsys):
         "--json",
     ) == 2
     assert "outside --output-root" in json.loads(capsys.readouterr().err)["errors"][0]["message"]
+
+
+def test_gen_reports_output_write_failure_before_generation(tmp_path, monkeypatch, capsys):
+    config = write_config(tmp_path, MINIMAL_YAML)
+    output = tmp_path / "build" / "report.docx"
+
+    def fail_write_check(path):
+        assert path == output.resolve()
+        raise otchet_compose.cli.OutputWriteError(f"Cannot write output file {path}: permission denied")
+
+    monkeypatch.setattr(otchet_compose.cli, "_verify_output_writable", fail_write_check)
+
+    assert _run(monkeypatch, "gen", "-f", str(config), "--json") == 2
+
+    captured = capsys.readouterr()
+    payload = json.loads(captured.err)
+    assert captured.out == ""
+    assert payload["errors"][0]["code"] == "output_write_failed"
+    assert str(output.resolve()) in payload["errors"][0]["message"]
 
 
 def test_gen_writes_sha256_manifest(tmp_path, monkeypatch, capsys):
